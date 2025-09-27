@@ -31,4 +31,19 @@ return [
 
     'supports_credentials' => true,
 
+        /*
+    |--------------------------------------------------------------------------
+    | School Management CORS Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration CORS pour l'API du système scolaire
+    |
+    */
+
+    // M - School API CORS settings
+    'school_origins' => [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ],
+
 ];

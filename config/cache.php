@@ -95,6 +95,23 @@ return [
 
     ],
 
+       /*
+    |--------------------------------------------------------------------------
+    | School Notification System
+    |--------------------------------------------------------------------------
+    |
+    | Configuration des notifications pour le système scolaire
+    |
+    */
+
+    // M - School notification settings
+    'school_notifications' => [
+        'student_welcome' => true,
+        'parent_invitations' => true,
+        'grade_updates' => true,
+        'attendance_alerts' => true,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Cache Key Prefix

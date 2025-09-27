@@ -62,5 +62,22 @@ return [
         'verify_csrf_token' => App\Http\Middleware\VerifyCsrfToken::class,
         'encrypt_cookies' => App\Http\Middleware\EncryptCookies::class,
     ],
+    
+        /*
+    |--------------------------------------------------------------------------
+    | School API Token Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration des tokens API pour le système scolaire
+    |
+    */
+
+    // M - School API token settings
+    'school_tokens' => [
+        'student_token_expiration' => 24 * 60, // 24 hours
+        'parent_token_expiration' => 24 * 60, // 24 hours  
+        'admin_token_expiration' => 8 * 60, // 8 hours
+    ],
+    
 
 ];

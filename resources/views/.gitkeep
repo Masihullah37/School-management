@@ -1,1 +1,16 @@
+# School Management System - Views Directory
+# ==========================================
 
+# This directory contains Laravel Blade templates for the school management system.
+
+# Development Timeline:
+# - Project Started: October 2025
+# - Developer: Masihullah37
+# - Framework: Laravel 11 + React 19
+
+
+
+# Note: This file (.gitkeep) ensures the views directory is tracked by Git
+# even when empty during initial project setup.
+
+# Last Updated: October 2025

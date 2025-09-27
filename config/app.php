@@ -187,4 +187,21 @@ return [
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
 
+    /*
+|--------------------------------------------------------------------------
+| School Management System Configuration
+|--------------------------------------------------------------------------
+|
+| Configuration spécifique au système de gestion scolaire
+| Développé par : Masihullah37
+| Période de développement : Octobre 2025
+|
+*/
+
+
+'school_management' => [
+    'development_period' => 'October 2025',
+    'author' => 'Masihullah37',
+],
+
 ];

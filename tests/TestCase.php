@@ -8,3 +8,4 @@ abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
 }
+# School Management System - Public Storage

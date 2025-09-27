@@ -44,4 +44,5 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertNoContent();
     }
+    # School Management System - Public Storage
 }

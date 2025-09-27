@@ -51,4 +51,5 @@ class EmailVerificationTest extends TestCase
 
         $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
+    # School Management System - Public Storage
 }

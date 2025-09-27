@@ -73,4 +73,25 @@ return [
         public_path('storage') => storage_path('app/public'),
     ],
 
+        /*
+    |--------------------------------------------------------------------------
+    | School File Management
+    |--------------------------------------------------------------------------
+    |
+    | Gestion des fichiers pour le système scolaire
+    |
+    */
+
+    // M - School file storage configuration
+    'school_disks' => [
+        'student_documents' => [
+            'driver' => 'local',
+            'root' => storage_path('app/student_documents'),
+        ],
+        'academic_records' => [
+            'driver' => 'local', 
+            'root' => storage_path('app/academic_records'),
+        ],
+    ],
+
 ];

@@ -154,4 +154,30 @@ return [
 
   'password_timeout' => 10800,
 
+   /*
+    |--------------------------------------------------------------------------
+    | School Management Authentication
+    |--------------------------------------------------------------------------
+    |
+    | Configuration d'authentification personnalisée pour le système scolaire
+    |
+    */
+
+    // M - Custom authentication setup
+    'school_guards' => [
+        'student' => [
+            'provider' => 'students',
+            'domain' => 'student',
+        ],
+        'parent' => [
+            'provider' => 'parents', 
+            'domain' => 'parent',
+        ],
+        'admin' => [
+            'provider' => 'admins',
+            'domain' => 'admin',
+        ],
+    ],
+
 ];
+   

@@ -148,4 +148,25 @@ return [
 
     ],
 
+        /*
+    |--------------------------------------------------------------------------
+    | School Management Database Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration spécifique à la base de données du système scolaire
+    |
+    */
+
+    // M - School database settings
+    'school_connections' => [
+        'student_management' => [
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+        ],
+        'academic_records' => [
+            'charset' => 'utf8mb4', 
+            'collation' => 'utf8mb4_unicode_ci',
+        ],
+    ],
+
 ];

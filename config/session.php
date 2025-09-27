@@ -198,4 +198,20 @@ return [
 
     'same_site' => 'lax',
 
+        /*
+    |--------------------------------------------------------------------------
+    | School Session Management
+    |--------------------------------------------------------------------------
+    |
+    | Gestion des sessions pour le système scolaire
+    |
+    */
+
+    // M - School session configuration
+    'school_sessions' => [
+        'student_timeout' => 120, // 2 hours
+        'parent_timeout' => 180, // 3 hours
+        'admin_timeout' => 60, // 1 hour
+    ],
+
 ];

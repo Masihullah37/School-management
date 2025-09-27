@@ -21,4 +21,5 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticated();
         $response->assertNoContent();
     }
+    # School Management System - Public Storage
 }

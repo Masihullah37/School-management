@@ -17,6 +17,23 @@ return [
         resource_path('views'),
     ],
 
+       /*
+    |--------------------------------------------------------------------------
+    | School Notification System
+    |--------------------------------------------------------------------------
+    |
+    | Configuration des notifications pour le système scolaire
+    |
+    */
+
+    // M - School notification settings
+    'school_notifications' => [
+        'student_welcome' => true,
+        'parent_invitations' => true,
+        'grade_updates' => true,
+        'attendance_alerts' => true,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Compiled View Path
