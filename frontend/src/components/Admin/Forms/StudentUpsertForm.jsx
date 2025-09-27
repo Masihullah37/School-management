@@ -4,12 +4,13 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "../../ui/form.jsx";
 import {Input} from "../../ui/input.jsx";
 import {Button} from "../../ui/button.jsx";
-import {Loader, Trash2Icon} from "lucide-react";
+import {Loader} from "lucide-react";
 import {RadioGroup, RadioGroupItem} from "../../ui/radio-group.jsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../../ui/select.jsx";
 import {toast} from "sonner";
 import {useEffect, useState} from "react";
 import parentApi from "../../../services/Api/Admin/ParentApi.js";
+import PropTypes from "prop-types";
 
 const formSchema = z.object({
   firstname: z.string().max(50),
@@ -30,7 +31,8 @@ export default function StudentUpsertForm({handleSubmit,values}) {
   const {setError, formState: {isSubmitting}, reset} = form
   const isUpdate = values !== undefined
   useEffect(() => {
-    parentApi.all(['id', 'firstname', 'lastname']).then(({data}) => setParents(data.data) )
+    parentApi.all(['id', 'firstname', 'lastname']).then(({data}) =>  {console.log("Parents fetched:", data.data)
+    setParents(data.data) })
   }, []);
   const onSubmit = async values => {
     const loaderMsg = isUpdate? 'Updating in progress.':'Adding Student'
@@ -42,7 +44,7 @@ export default function StudentUpsertForm({handleSubmit,values}) {
           toast.success(data.message)
           reset()
         }
-      }).catch((all) => {
+      }).catch(({response}) => {
       Object.entries(response.data.errors).forEach((error) => {
         const [fieldName, errorMessages] = error
         setError(fieldName, {
@@ -52,8 +54,8 @@ export default function StudentUpsertForm({handleSubmit,values}) {
     }).finally(() => {
       toast.dismiss(loader)
     })
-  }
-
+  };
+ 
   return <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -159,7 +161,7 @@ export default function StudentUpsertForm({handleSubmit,values}) {
           render={({field}) => (
             <FormItem>
               <FormLabel>Parent</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value?.toString()}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Parent"/>
@@ -208,4 +210,9 @@ export default function StudentUpsertForm({handleSubmit,values}) {
       </form>
     </Form>
   </>
+}
+
+StudentUpsertForm.propTypes = {
+  handleSubmit: PropTypes.func.isRequired,
+  values: PropTypes.object
 }

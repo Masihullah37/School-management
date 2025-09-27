@@ -17,16 +17,20 @@ class AuthenticatedSessionController extends Controller
   public function store(LoginRequest $request): JsonResponse
   {
     $request->authenticate();
-    $guards = ['web', 'teacher', 'parent', 'admin'];
 
-    $user = null;
-    foreach ($guards as $guard) {
-      $currentGuard = Auth::guard($guard);
-      if ($currentGuard->check()) {
-        $user = $currentGuard->user();break;
-      }
-    };
     $request->session()->regenerate();
+
+    $guards = ['web', 'admin', 'teacher', 'parent'];
+    $user = null;
+
+    foreach ($guards as $guard) {
+        if (Auth::guard($guard)->check()) {
+            /** @var \App\Models\User|\App\Models\Admin|\App\Models\Teacher|\App\Models\StudentParent $user */
+            $user = Auth::guard($guard)->user();
+            break;
+        }
+    }
+
     return response()->json([
       'user' => $user,
       'token' => $user->createToken('api', [$user->getRoleAttribute()])->plainTextToken
@@ -38,16 +42,12 @@ class AuthenticatedSessionController extends Controller
    */
   public function destroy(Request $request): Response
   {
-    $guards = ['web', 'teacher', 'parent', 'admin'];
-    $user = null;
-    foreach ($guards as $guard) {
-      $currentGuard = Auth::guard($guard);
-      if ($currentGuard->check()) {
-        $user = $currentGuard->user();
-        break;
-      }
+    $user = $request->user();
+
+    if ($user) {
+      $user->tokens()->delete();
     }
-    $user->tokens()->delete();
+
     Auth::guard('web')->logout();
 
     $request->session()->invalidate();

@@ -4,11 +4,12 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "../../ui/form.jsx";
 import {Input} from "../../ui/input.jsx";
 import {Button} from "../../ui/button.jsx";
-import {Loader, Trash2Icon} from "lucide-react";
+import {Loader} from "lucide-react";
 import {RadioGroup, RadioGroupItem} from "../../ui/radio-group.jsx";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../../ui/select.jsx";
 import {Textarea} from "../../ui/textarea.jsx";
 import {toast} from "sonner";
+import PropTypes from "prop-types";
 
 const formSchema = z.object({
   firstname: z.string().max(50),
@@ -21,34 +22,70 @@ const formSchema = z.object({
   email: z.string().email().min(2).max(30),
   password: z.string().min(8).max(30)
 })
-export default function ParentUpsertForm({handleSubmit,values}) {
+// export default function ParentUpsertForm({handleSubmit,values}) {
+//   const form = useForm({
+//     resolver: zodResolver(formSchema),
+//     defaultValues: values || {}
+//   })
+//   const {setError, formState: {isSubmitting}, reset} = form
+//   const isUpdate = values !== undefined
+//   const onSubmit = async values => {
+//     const loaderMsg = isUpdate? 'Updating in progress.':'Adding parent'
+//     const loader = toast.loading(loaderMsg)
+
+//     await handleSubmit(values).then(
+//       ({status, data}) => {
+//         if (status === 200) {
+//           toast.success(data.message)
+//           reset()
+//         }
+//         } catch (error) {
+//     if (error.response?.data?.errors) {
+//       Object.entries(error.response.data.errors).forEach(([fieldName, errorMessages]) => {
+//         setError(fieldName, {
+//           message: errorMessages.join()
+//         });
+//       });
+//     } else {
+//       toast.error("Something went wrong");
+//     }
+//   } finally {
+//     toast.dismiss(loader);
+//   }
+// };
+export default function ParentUpsertForm({ handleSubmit, values }) {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: values || {}
-  })
-  const {setError, formState: {isSubmitting}, reset} = form
-  const isUpdate = values !== undefined
-  const onSubmit = async values => {
-    const loaderMsg = isUpdate? 'Updating in progress.':'Adding parent'
-    const loader = toast.loading(loaderMsg)
+  });
+  const { setError, formState: { isSubmitting }, reset } = form;
+  const isUpdate = values !== undefined;
 
-    await handleSubmit(values).then(
-      ({status, data}) => {
-        if (status === 200) {
-          toast.success(data.message)
-          reset()
-        }
-      }).catch((all) => {
-      Object.entries(response.data.errors).forEach((error) => {
-        const [fieldName, errorMessages] = error
-        setError(fieldName, {
-          message: errorMessages.join()
-        })
-      })
-    }).finally(() => {
-      toast.dismiss(loader)
-    })
-  }
+  const onSubmit = async (values) => {
+    const loaderMsg = isUpdate ? 'Updating in progress.' : 'Adding parent';
+    const loader = toast.loading(loaderMsg);
+
+    try {
+      const { status, data } = await handleSubmit(values);
+      if (status === 200) {
+        toast.success(data.message);
+        reset();
+      }
+    } catch (error) {
+      if (error.response?.data?.errors) {
+        Object.entries(error.response.data.errors).forEach(([fieldName, errorMessages]) => {
+          setError(fieldName, {
+            message: errorMessages.join()
+          });
+        });
+      } else {
+        toast.error("Something went wrong");
+      }
+    } finally {
+      toast.dismiss(loader);
+    }
+  };
+
 
   return <>
     <Form {...form}>
@@ -214,3 +251,8 @@ export default function ParentUpsertForm({handleSubmit,values}) {
     </Form>
   </>
 }
+
+ParentUpsertForm.propTypes = {
+  handleSubmit: PropTypes.func.isRequired,
+  values: PropTypes.object, // or use PropTypes.shape({...}) for stricter validation
+};

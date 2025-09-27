@@ -5,12 +5,13 @@ import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "..
 import {Input} from "../../ui/input.jsx";
 import {Button} from "../../ui/button.jsx";
 import {useNavigate} from "react-router-dom";
-import {
-  ADMIN_DASHBOARD_ROUTE,
-  PARENT_DASHBOARD_ROUTE, redirectToDashboard,
-  STUDENT_DASHBOARD_ROUTE,
-  TEACHER_DASHBOARD_ROUTE
-} from "../../../router/index.jsx";
+// import {
+//   ADMIN_DASHBOARD_ROUTE,
+//   PARENT_DASHBOARD_ROUTE, redirectToDashboard,
+//   STUDENT_DASHBOARD_ROUTE,
+//   TEACHER_DASHBOARD_ROUTE
+// } from "../../../router/index.jsx";
+import {redirectToDashboard,} from "../../../router/index.jsx";
 import {Loader} from "lucide-react";
 import {useUserContext} from "../../../context/StudentContext.jsx";
 
@@ -23,7 +24,11 @@ export default function UserLogin() {
   const navigate = useNavigate()
   const form = useForm({
     resolver: zodResolver(formSchema),
-  })
+    defaultValues: {
+    email: "",
+    password: "",
+  },
+  });
   const {setError, formState: {isSubmitting}} = form
 
   // 2. Define a submit handler.
@@ -36,11 +41,18 @@ export default function UserLogin() {
           const {role} = data.user
           navigate(redirectToDashboard(role));
         }
-      }).catch(({response}) => {
-      setError('email', {
-        message: response.data.errors.email.join()
-      })
-    })
+      }).catch((error) => {
+      if (error.response && error.response.data && error.response.data.errors) {
+        setError('email', {
+          message: error.response.data.errors.email.join(),
+        });
+      } else {
+        console.error("An unexpected error occurred:", error);
+        setError('email', {
+          message: "An unexpected error occurred. Please try again.",
+        });
+      }
+    });
   }
 
   return <>

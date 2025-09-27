@@ -10,7 +10,7 @@ class StudentParentResource extends JsonResource
   public function toArray(Request $request)
   {
     $student = parent::toArray($request);
-    $student['formatted_updated_at'] = $this->resource->updated_at->diffForHumans();
+    $student['formatted_updated_at'] = $this->resource->updated_at ? $this->resource->updated_at->diffForHumans() : null;
     return $student;
   }
 }

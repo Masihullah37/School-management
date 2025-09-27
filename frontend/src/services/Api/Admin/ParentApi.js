@@ -11,7 +11,7 @@ const ParentApi = {
     return await axiosClient.delete(`/admin/parents/${id}`)
   },
   all: async (columns = []) => {
-    return await axiosClient.get('/admin/parents', {
+    return await axiosClient.get('/parents', {
       params: {
         columns: columns
       },

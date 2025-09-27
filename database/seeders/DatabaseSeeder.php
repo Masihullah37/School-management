@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
       'address' => fake()->address(),
       'phone' => substr(fake()->phoneNumber(), 10),
       'email' => 'admin@admin.admin',
-      'password' => '$2y$10$ssjzkveLo5cC10ktCfJgvOtQcKsE0DuRmjijCBciikjPApZRyJHie'
+      'password' => 'password'
     ]);
 
     Teacher::factory()->create([
@@ -41,7 +41,7 @@ class DatabaseSeeder extends Seeder
       'address' => fake()->address(),
       'phone' => substr(fake()->phoneNumber(), 10),
       'email' => 'teacher@teacher.teacher',
-      'password' => '$2y$10$ssjzkveLo5cC10ktCfJgvOtQcKsE0DuRmjijCBciikjPApZRyJHie'
+      'password' => 'password'
     ]);
   }
 }

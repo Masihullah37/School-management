@@ -24,6 +24,7 @@ Route::middleware(['auth:sanctum'])->group(static function () {
 Route::middleware(['auth:sanctum', 'ability:student'])->prefix('student')->group(static function () {
 });
 
+Route::get('parents', [StudentParentController::class, 'index']);
 Route::middleware(['auth:sanctum', 'ability:admin'])->prefix('admin')->group(static function () {
   Route::apiResources([
     'parents' => StudentParentController::class,
