@@ -120,22 +120,23 @@ jobs:
 
       - name: Setup SSH
         run: |
-          mkdir -p ~/.ssh
-          # Use 'tr -d "\r"' to strip invisible carriage returns and the sed command for line breaks
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+         mkdir -p ~/.ssh
+         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+         chmod 600 ~/.ssh/id_rsa
+         ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
 
       - name: Deploy Files
         run: |
           cd deployment
           rsync -avz --delete \
             --exclude='.env' \
+            -e "ssh -p 65002" \  # <<< ADD THIS LINE
             ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.SERVER_PATH }}/
 
       - name: Run Post-Deployment
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -p 65002 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           cd ${{ secrets.SERVER_PATH }}
           chmod -R 755 .
           chmod -R 775 storage bootstrap/cache
