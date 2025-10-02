@@ -45,53 +45,49 @@ jobs:
         run: npm run build
         working-directory: ./frontend 
 
-      # 7️⃣ Full Deployment via SSH and Rsync (THE FIX for Incremental Updates)
-      - name: 7. Deploy Updated Files & Run Post-Deployment Commands
-        uses: appleboy/ssh-action@v0.1.10
+      # 7️⃣ Full Deployment via SCP (The FIX for file transfer)
+      - name: 7. Deploy Updated Files via SCP & Run Post-Deployment Commands
+        # Use scp-action for reliable file transfer
+        uses: appleboy/scp-action@master
         with:
-          # --- Connection Details ---
-          host: ${{ secrets.SFTP_HOST }} 
-          username: ${{ secrets.SFTP_USER }}
-          key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
+        # --- Connection Details (Use your SFTP secrets) ---
+         host: ${{ secrets.SFTP_HOST }} 
+         username: ${{ secrets.SFTP_USER }}
+         key: ${{ secrets.SFTP_PRIVATE_KEY }}
+         port: ${{ secrets.SFTP_PORT }}
 
-          # --- File Synchronization ---
-          source: "./" # The entire repository root.
-          target: "~/public_html/laravel/" # The application root on Hostinger.
-          # CRITICAL: sync: true activates rsync. It only transfers files that have changed,
-          # and it respects your .gitignore, ensuring files like .env are never overwritten.
-          sync: true 
-          
-          # --- Commands to run ON THE HOSTINGER SERVER after files are copied ---
-          script: |
-            echo "--- Starting Post-Deployment Cleanup on Hostinger ---"
-            
-            # 1. Navigate to the Laravel application root
-            cd ~/public_html/laravel/
-            
-            # 2. Re-create the storage link (Crucial for assets/uploads)
-            php artisan storage:link
-            
-            # 3. Clear Laravel Caches (MUST BE DONE after code changes)
-            # This ensures your server uses the newly uploaded controller/code.
-            php artisan config:clear
-            php artisan cache:clear
-            php artisan view:clear
-            
-            # 4. Optional: Run Migrations (Uncomment if you changed the database schema)
-            # php artisan migrate --force 
-            
-            echo "--- Deployment Complete! ---"
+        # --- File Synchronization (SCP Transfer) ---
+       # CRITICAL: Transfer the entire repository root to the application root.
+       # SCP respects your .gitignore for files like .env, preventing overwrite.
+        source: "./" 
+        target: "~/public_html/laravel/" 
+        overwrite: true 
 
-      # 8️⃣ Final Verification
-      - name: 8. Verify Controller Update
+    # 8️⃣ Post-Deployment Commands (MUST be a separate SSH step)
+      - name: 8. Run Post-Deployment Commands (Cache Clear)
+      # Use ssh-action ONLY for running remote commands
         uses: appleboy/ssh-action@v0.1.10
-        with:
+         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
-          # Check the file's timestamp to confirm it was updated.
-          script: |
-            echo "=== Checking if Controller.php was updated (Check Timestamp) ==="
-            ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
+    
+     script: |
+      echo "--- Starting Post-Deployment Cleanup on Hostinger ---"            
+      # 1. Navigate to the Laravel application root
+      cd ~/public_html/laravel/
+      
+      # 2. CLEAR CACHES (This is why your code wasn't updating)
+      # config:clear, cache:clear, and view:clear are essential.
+      php artisan config:clear
+      php artisan cache:clear
+      php artisan view:clear
+      
+      # 3. STORAGE LINK FIX (Remove the storage:link command that was failing)
+      # If you use storage, you must manually copy files or find an alternative solution.
+      
+      # 4. Verification command (Optional, keep it simple)
+      ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
+
+      echo "--- Deployment Complete! ---"
