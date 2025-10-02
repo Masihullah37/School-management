@@ -38,16 +38,15 @@ jobs:
         run: npm run build
         working-directory: ./frontend
         
-      # Archive the build artifacts for the next job
+      # Archive the built files (including vendor/ and public/build) for the next job
       - name: 7. Archive Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: deployment-package
           path: |
             ./*
-            !./node_modules
-            !./frontend/node_modules
-            # NOTE: We keep vendor/ here because it was built in step 3.
+            !./node_modules # Exclude local node_modules
+            !./frontend/node_modules # Exclude frontend node_modules
 
   # ----------------------------------------------------
   # 2. DEPLOY PHASE (Requires successful build)
@@ -57,47 +56,41 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # Download the built files and vendor directory
+      # 1. Download the built files and vendor directory
       - name: 1. Download Build Artifacts
         uses: actions/download-artifact@v4
         with:
           name: deployment-package
           path: .
 
-      # 2. Deploy Updated Files via SCP (FIX: Use a more specific transfer method)
-      - name: 2. Deploy Updated Files via SCP
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SFTP_HOST }} 
-          username: ${{ secrets.SFTP_USER }}
-          key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
-
-          # CRITICAL: We explicitly list the directories to ensure they are copied fully.
-          # This should force the overwrite and update the files reliably.
-          source: "{app,bootstrap,config,database,public,resources,routes,vendor,frontend}"
-          target: "~/public_html/laravel/"
-          overwrite: true
-
-      # 3. Post-Deployment Commands (Cache Clearing)
-      - name: 3. Run Post-Deployment Commands
-        uses: appleboy/ssh-action@v0.1.10
+      # 2. Deploy Updated Files using Rsync (THE ROBUST FIX)
+      - name: 2. Deploy Updated Files via Rsync
+        # We use ssh-action for rsync functionality, which is highly reliable for updates.
+        uses: appleboy/ssh-action@v0.1.10 
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
           
+          # Rsync parameters
+          source: "./" # Transfer the entire downloaded artifact contents
+          target: "~/public_html/laravel/" # To the application root on Hostinger
+          sync: true # Activate rsync for robust incremental transfer (only copies changed files)
+
+          # Commands run on the Hostinger server AFTER the file sync is complete
           script: |
             echo "--- Starting Post-Deployment Cleanup on Hostinger ---"            
+            
+            # 1. Navigate to the Laravel application root
             cd ~/public_html/laravel/
             
-            # CLEAR CACHES (Essential)
+            # 2. CLEAR CACHES (Crucial for seeing PHP/config changes)
             php artisan config:clear
             php artisan cache:clear
             php artisan view:clear
             
-            # Verification command (The file MUST show a current timestamp now)
+            # 3. Verification command (Used to check the file's timestamp/size)
             echo "=== Final verification timestamp ==="
             ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
 
