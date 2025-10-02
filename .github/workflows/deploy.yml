@@ -47,10 +47,12 @@ jobs:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
+          port: ${{ secrets.SFTP_PORT }}  # 65002
           source: "frontend/dist/"
           target: "/public_html/laravel/public/"
           rm: false
+          verbose: true
+
     
 
 
@@ -65,6 +67,7 @@ jobs:
           source: "./"
           target: "/public_html/laravel/"
           rm: false
+          verbose: true
           exclude: |
             .git*
             frontend/dist
