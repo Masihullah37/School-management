@@ -49,7 +49,7 @@ jobs:
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}  # 65002
           source: "frontend/dist/"
-          target: "/public_html/laravel/public/"
+          target: "public_html/laravel/public/"
           rm: false
           
 
@@ -65,7 +65,7 @@ jobs:
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}   # must be 65002
           source: "./"
-          target: "/public_html/laravel/"
+          target: "public_html/laravel/"
           rm: false
           exclude: |
             .git*
