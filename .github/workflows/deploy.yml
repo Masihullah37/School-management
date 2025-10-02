@@ -51,7 +51,7 @@ jobs:
           source: "frontend/dist/"
           target: "/public_html/laravel/public/"
           rm: false
-          verbose: true
+          
 
     
 
@@ -67,7 +67,6 @@ jobs:
           source: "./"
           target: "/public_html/laravel/"
           rm: false
-          verbose: true
           exclude: |
             .git*
             frontend/dist
