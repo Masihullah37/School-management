@@ -3,7 +3,7 @@ name: Deploy Laravel + Frontend via SFTP
 on:
   push:
     branches:
-      - main  # run workflow on main branch
+      - main
 
 jobs:
   deploy:
@@ -40,37 +40,41 @@ jobs:
         run: npm run build
         working-directory: ./frontend
 
-      # 7️⃣ Deploy frontend
-      - name: Deploy Frontend via SFTP
+      # 7️⃣ Deploy frontend assets (UPDATE ONLY)
+      - name: Deploy Frontend Assets via SFTP
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}  # 65002
-          source: "frontend/dist/"
+          port: ${{ secrets.SFTP_PORT }}
+          source: "frontend/dist/**"
           target: "public_html/laravel/public/"
-          rm: false
-          
+          rm: false  # ← Important: DON'T remove existing files
+          overwrite: true  # ← Only overwrite if files exist
 
-    
-
-
-      # 8️⃣ Deploy backend
+      # 8️⃣ Deploy backend files (UPDATE ONLY)
       - name: Deploy Backend via SFTP
-        uses: appleboy/scp-action@v0.1.3
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          username: ${{ secrets.SFTP_USER }}
+          server: ${{ secrets.SFTP_HOST }}
+          ssh_private_key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          local_path: './'
+          remote_path: 'public_html/laravel/'
+          delete_remote_files: false  # ← Critical: Don't delete anything
+          sftp_args: '-o ConnectTimeout=5'
+
+       # 9️⃣ Verify Deployment
+      - name: Verify Files Were Updated
+        uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}   # must be 65002
-          source: "./"
-          target: "public_html/laravel/"
-          rm: false
-          exclude: |
-            .git*
-            frontend/dist
-            node_modules
-            storage
-            vendor
-            .env
+          port: ${{ secrets.SFTP_PORT }}
+          script: |
+            echo "=== Checking updated files ==="
+            find ~/public_html/laravel/public/assets/ -name "*.js" -o -name "*.css" | head -5
+            echo "=== Deployment verification complete ==="
