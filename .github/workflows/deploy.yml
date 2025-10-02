@@ -27,7 +27,7 @@ jobs:
       # 3️⃣ Install PHP Dependencies (Creates the 'vendor' folder on the runner)
       - name: 3. Install Composer packages
         run: composer install --no-dev --prefer-dist --optimize-autoloader
-        # The 'vendor' folder is built locally and ready to be transferred/synced.
+        # The 'vendor' folder is built locally and ready to be transferred.
 
       # 4️⃣ Setup Node.js
       - name: 4. Setup Node.js
@@ -46,48 +46,47 @@ jobs:
         working-directory: ./frontend 
 
       # 7️⃣ Full Deployment via SCP (The FIX for file transfer)
-      - name: 7. Deploy Updated Files via SCP & Run Post-Deployment Commands
-        # Use scp-action for reliable file transfer
+      - name: 7. Deploy Updated Files via SCP
+        # Use scp-action for reliable file transfer of all repository files.
         uses: appleboy/scp-action@master
         with:
-        # --- Connection Details (Use your SFTP secrets) ---
-         host: ${{ secrets.SFTP_HOST }} 
-         username: ${{ secrets.SFTP_USER }}
-         key: ${{ secrets.SFTP_PRIVATE_KEY }}
-         port: ${{ secrets.SFTP_PORT }}
+          # --- Connection Details (Uses SFTP secrets) ---
+          host: ${{ secrets.SFTP_HOST }} 
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
 
-        # --- File Synchronization (SCP Transfer) ---
-       # CRITICAL: Transfer the entire repository root to the application root.
-       # SCP respects your .gitignore for files like .env, preventing overwrite.
-        source: "./" 
-        target: "~/public_html/laravel/" 
-        overwrite: true 
+          # --- File Synchronization (SCP Transfer) ---
+          # Transfers the entire repository root to the Laravel app root on Hostinger.
+          # SCP respects your .gitignore (e.g., skips .env).
+          source: "./"
+          target: "~/public_html/laravel/"
+          overwrite: true # Overwrites files with the same name.
 
-    # 8️⃣ Post-Deployment Commands (MUST be a separate SSH step)
+      # 8️⃣ Post-Deployment Commands (MUST be a separate SSH step)
       - name: 8. Run Post-Deployment Commands (Cache Clear)
-      # Use ssh-action ONLY for running remote commands
+        # Use ssh-action ONLY for running remote commands.
         uses: appleboy/ssh-action@v0.1.10
-         with:
+        with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
-    
-     script: |
-      echo "--- Starting Post-Deployment Cleanup on Hostinger ---"            
-      # 1. Navigate to the Laravel application root
-      cd ~/public_html/laravel/
-      
-      # 2. CLEAR CACHES (This is why your code wasn't updating)
-      # config:clear, cache:clear, and view:clear are essential.
-      php artisan config:clear
-      php artisan cache:clear
-      php artisan view:clear
-      
-      # 3. STORAGE LINK FIX (Remove the storage:link command that was failing)
-      # If you use storage, you must manually copy files or find an alternative solution.
-      
-      # 4. Verification command (Optional, keep it simple)
-      ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
+          
+          # CRITICAL: The script must be correctly indented under 'with:'
+          script: |
+            echo "--- Starting Post-Deployment Cleanup on Hostinger ---"            
+            
+            # 1. Navigate to the Laravel application root
+            cd ~/public_html/laravel/
+            
+            # 2. CLEAR CACHES (This is the most common reason code doesn't update)
+            # Clears cached configurations, routes, and compiled views.
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan view:clear
+            
+            # 3. Verification command (Optional check to confirm file update timestamp)
+            ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
 
-      echo "--- Deployment Complete! ---"
+            echo "--- Deployment Complete! ---"
