@@ -40,33 +40,43 @@ jobs:
         run: npm run build
         working-directory: ./frontend
 
-      # 7️⃣ Deploy frontend assets (UPDATE ONLY)
-      - name: Deploy Frontend Assets via SFTP
+      # 7️⃣ Deploy frontend assets - FIXED
+      - name: Deploy Frontend Assets
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
-          source: "frontend/dist/**"
+          source: "frontend/dist/*"
           target: "public_html/laravel/public/"
-          rm: false  # ← Important: DON'T remove existing files
-          overwrite: true  # ← Only overwrite if files exist
+          rm: false
+          overwrite: true
 
-      # 8️⃣ Deploy backend files (UPDATE ONLY)
-      - name: Deploy Backend via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      # 8️⃣ Deploy backend files - FIXED (using correct action)
+      - name: Deploy Backend Files
+        uses: appleboy/scp-action@master
         with:
+          host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
-          server: ${{ secrets.SFTP_HOST }}
-          ssh_private_key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
-          local_path: './'
-          remote_path: 'public_html/laravel/'
-          delete_remote_files: false  # ← Critical: Don't delete anything
-          sftp_args: '-o ConnectTimeout=5'
+          source: |
+            app/
+            bootstrap/
+            config/
+            database/
+            resources/
+            routes/
+            public/index.php
+            artisan
+            composer.json
+            composer.lock
+          target: "public_html/laravel/"
+          rm: false
+          overwrite: true
 
-       # 9️⃣ Verify Deployment
+      # 9️⃣ Verify Deployment
       - name: Verify Files Were Updated
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -75,6 +85,8 @@ jobs:
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
           script: |
-            echo "=== Checking updated files ==="
-            find ~/public_html/laravel/public/assets/ -name "*.js" -o -name "*.css" | head -5
+            echo "=== Checking public folder ==="
+            ls -la ~/public_html/laravel/public/
+            echo "=== Checking for assets folder ==="
+            ls -la ~/public_html/laravel/public/assets/ || echo "No assets folder yet"
             echo "=== Deployment verification complete ==="
