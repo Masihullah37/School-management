@@ -1,6 +1,7 @@
-name: Deploy Laravel + Frontend via SFTP
+name: Deploy Laravel Application (Incremental Update)
 
 on:
+  # Triggers the workflow on pushes to the main branch
   push:
     branches:
       - main
@@ -11,71 +12,86 @@ jobs:
 
     steps:
       # 1️⃣ Checkout repository
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: 1. Checkout Code
+        uses: actions/checkout@v4
+        # Downloads your code.
 
       # 2️⃣ Setup PHP
-      - name: Setup PHP
+      - name: 2. Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.2' # Ensure this matches your Hostinger PHP version
+          extensions: mbstring, pdo_mysql, dom, bcmath, curl
+          tools: composer
 
-      # 3️⃣ Install Composer dependencies
-      - name: Install Composer packages
-        run: composer install --no-progress --no-suggest --prefer-dist --optimize-autoloader
+      # 3️⃣ Install PHP Dependencies (Creates the 'vendor' folder on the runner)
+      - name: 3. Install Composer packages
+        run: composer install --no-dev --prefer-dist --optimize-autoloader
+        # The 'vendor' folder is built locally and ready to be transferred/synced.
 
       # 4️⃣ Setup Node.js
-      - name: Setup Node.js
+      - name: 4. Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
       # 5️⃣ Install npm dependencies
-      - name: Install npm packages
+      - name: 5. Install npm packages
         run: npm ci
-        working-directory: ./frontend
+        working-directory: ./frontend 
 
-      # 6️⃣ Build frontend
-      - name: Build frontend
+      # 6️⃣ Build frontend (Creates assets, usually in 'public/build' or 'public/dist')
+      - name: 6. Build frontend Assets
         run: npm run build
-        working-directory: ./frontend
+        working-directory: ./frontend 
 
-      # 7️⃣ Deploy frontend assets
-      - name: Deploy Frontend Assets
-        uses: appleboy/scp-action@master
+      # 7️⃣ Full Deployment via SSH and Rsync (THE FIX for Incremental Updates)
+      - name: 7. Deploy Updated Files & Run Post-Deployment Commands
+        uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.SFTP_HOST }}
+          # --- Connection Details ---
+          host: ${{ secrets.SFTP_HOST }} 
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
-          source: "frontend/dist/"
-          target: "public_html/laravel/public/"
-          rm: false
-          overwrite: true
 
-      # 8️⃣ Deploy backend files (SIMPLE & RELIABLE)
-      - name: Deploy Backend Files
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SFTP_HOST }}
-          username: ${{ secrets.SFTP_USER }}
-          key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
-          source: "app/"
-          target: "public_html/laravel/"
-          rm: false
-          overwrite: true
+          # --- File Synchronization ---
+          source: "./" # The entire repository root.
+          target: "~/public_html/laravel/" # The application root on Hostinger.
+          # CRITICAL: sync: true activates rsync. It only transfers files that have changed,
+          # and it respects your .gitignore, ensuring files like .env are never overwritten.
+          sync: true 
+          
+          # --- Commands to run ON THE HOSTINGER SERVER after files are copied ---
+          script: |
+            echo "--- Starting Post-Deployment Cleanup on Hostinger ---"
+            
+            # 1. Navigate to the Laravel application root
+            cd ~/public_html/laravel/
+            
+            # 2. Re-create the storage link (Crucial for assets/uploads)
+            php artisan storage:link
+            
+            # 3. Clear Laravel Caches (MUST BE DONE after code changes)
+            # This ensures your server uses the newly uploaded controller/code.
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan view:clear
+            
+            # 4. Optional: Run Migrations (Uncomment if you changed the database schema)
+            # php artisan migrate --force 
+            
+            echo "--- Deployment Complete! ---"
 
-      # 9️⃣ Verify File Update
-      - name: Verify File Update
+      # 8️⃣ Final Verification
+      - name: 8. Verify Controller Update
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
+          # Check the file's timestamp to confirm it was updated.
           script: |
-            echo "=== Checking if Controller.php was updated ==="
-            cat ~/public_html/laravel/app/Http/Controllers/Controller.php
-            echo "=== File details ==="
+            echo "=== Checking if Controller.php was updated (Check Timestamp) ==="
             ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
