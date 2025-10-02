@@ -102,3 +102,35 @@ jobs:
             echo "=== Checking public folder ==="
             ls -la ~/public_html/laravel/public/
             echo "=== Deployment verification complete ==="
+
+        # 11 Post-Deployment Setup
+      - name: Laravel Post-Deployment Setup
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          script: |
+            cd ~/public_html/laravel
+            
+            # Install composer dependencies (without dev packages)
+            composer install --no-dev --optimize-autoloader
+            
+            # Clear and cache config
+            php artisan config:clear
+            php artisan config:cache
+            
+            # Clear and cache routes
+            php artisan route:clear
+            php artisan route:cache
+            
+            # Clear and cache views
+            php artisan view:clear
+            php artisan view:cache
+            
+            # Set proper permissions
+            chmod -R 755 storage
+            chmod -R 755 bootstrap/cache
+            
+            echo "✅ Laravel deployment setup complete"
