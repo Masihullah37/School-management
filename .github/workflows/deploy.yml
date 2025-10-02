@@ -3,7 +3,7 @@ name: Deploy Laravel + Frontend via SFTP
 on:
   push:
     branches:
-      - main  # run workflow on main branch
+      - main
 
 jobs:
   deploy:
@@ -40,33 +40,97 @@ jobs:
         run: npm run build
         working-directory: ./frontend
 
-      # 7️⃣ Deploy frontend (dist folder) via SFTP
-      - name: Deploy Frontend via SFTP
-        uses: appleboy/scp-action@v0.1.3
+      # 7️⃣ Deploy frontend assets
+      - name: Deploy Frontend Assets
+        uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
           source: "frontend/dist/"
-          target: "/public_html/laravel/public/"
-          rm: false   # do not delete other files
+          target: "public_html/laravel/public/"
+          rm: false
+          overwrite: true
 
-      # 8️⃣ Deploy backend Laravel files (without overwriting storage, vendor, .env)
-      - name: Deploy Backend via SFTP
-        uses: appleboy/scp-action@v0.1.3
+      # 8️⃣ DEBUG: Check what backend files exist
+      - name: Check Backend Files
+        run: |
+          echo "=== Checking backend file structure ==="
+          ls -la
+          echo "=== Checking specific directories ==="
+          ls -la app/ bootstrap/ config/ database/ resources/ routes/ public/ || echo "Some directories might not exist"
+
+      # 9️⃣ Deploy backend files (FIXED - simpler approach)
+      - name: Deploy Backend Files
+        uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
-          source: "./"
-          target: "/public_html/laravel/"
+          source: "."
+          target: "public_html/laravel/"
           rm: false
+          overwrite: true
+          strip_components: 1
           exclude: |
-            .git*
-            frontend/dist
-            node_modules
-            storage
-            vendor
+            .git/
+            .github/
+            frontend/
+            node_modules/
+            storage/
+            vendor/
             .env
+            .env.example
+            composer.lock
+            package-lock.json
+            github_sftp_key
+            github_sftp_key.pub
+
+      # 🔟 Verify Deployment
+      - name: Verify Files Were Updated
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          script: |
+            echo "=== Checking deployed files ==="
+            ls -la ~/public_html/laravel/
+            echo "=== Checking public folder ==="
+            ls -la ~/public_html/laravel/public/
+            echo "=== Deployment verification complete ==="
+
+        # 11 Post-Deployment Setup
+      - name: Laravel Post-Deployment Setup
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          script: |
+            cd ~/public_html/laravel
+            
+            # Install composer dependencies (without dev packages)
+            composer install --no-dev --optimize-autoloader
+            
+            # Clear and cache config
+            php artisan config:clear
+            php artisan config:cache
+            
+            # Clear and cache routes
+            php artisan route:clear
+            php artisan route:cache
+            
+            # Clear and cache views
+            php artisan view:clear
+            php artisan view:cache
+            
+            # Set proper permissions
+            chmod -R 755 storage
+            chmod -R 755 bootstrap/cache
+            
+            echo "✅ Laravel deployment setup complete"
