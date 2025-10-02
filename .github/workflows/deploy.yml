@@ -73,7 +73,7 @@ jobs:
           target: "public_html/laravel/"
           rm: false
           overwrite: true
-          strip_components: 1
+          # strip_components: 1
           exclude: |
             .git/
             .github/
