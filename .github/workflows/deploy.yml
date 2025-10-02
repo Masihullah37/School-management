@@ -42,15 +42,17 @@ jobs:
 
       # 7️⃣ Deploy frontend
       - name: Deploy Frontend via SFTP
-        uses: appleboy/scp-action@v0.1.3
+        uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}   # must be 65002
+          port: ${{ secrets.SFTP_PORT }}
           source: "frontend/dist/"
           target: "/public_html/laravel/public/"
           rm: false
+    
+
 
       # 8️⃣ Deploy backend
       - name: Deploy Backend via SFTP
