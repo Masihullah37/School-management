@@ -1,0 +1,72 @@
+name: Deploy Laravel + Frontend via SFTP
+
+on:
+  push:
+    branches:
+      - main  # run workflow on main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2️⃣ Setup PHP
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      # 3️⃣ Install Composer dependencies
+      - name: Install Composer packages
+        run: composer install --no-progress --no-suggest --prefer-dist --optimize-autoloader
+
+      # 4️⃣ Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # 5️⃣ Install npm dependencies
+      - name: Install npm packages
+        run: npm ci
+        working-directory: ./frontend
+
+      # 6️⃣ Build frontend
+      - name: Build frontend
+        run: npm run build
+        working-directory: ./frontend
+
+      # 7️⃣ Deploy frontend (dist folder) via SFTP
+      - name: Deploy Frontend via SFTP
+        uses: appleboy/scp-action@v0.1.3
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          source: "frontend/dist/"
+          target: "/public_html/laravel/public/"
+          rm: false   # do not delete other files
+
+      # 8️⃣ Deploy backend Laravel files (without overwriting storage, vendor, .env)
+      - name: Deploy Backend via SFTP
+        uses: appleboy/scp-action@v0.1.3
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          source: "./"
+          target: "/public_html/laravel/"
+          rm: false
+          exclude: |
+            .git*
+            frontend/dist
+            node_modules
+            storage
+            vendor
+            .env
