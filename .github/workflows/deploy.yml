@@ -40,17 +40,7 @@ jobs:
         run: npm run build
         working-directory: ./frontend
 
-      # 7️⃣ DEBUG: Check what was built
-      - name: Check Build Output
-        run: |
-          echo "=== Checking frontend build ==="
-          ls -la frontend/
-          echo "=== Checking dist folder ==="
-          ls -la frontend/dist/ || echo "No dist folder found"
-          echo "=== Checking for any built files ==="
-          find frontend/ -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "assets" | head -20
-
-      # 8️⃣ Deploy frontend assets (FIXED - with proper file selection)
+      # 7️⃣ Deploy frontend assets
       - name: Deploy Frontend Assets
         uses: appleboy/scp-action@master
         with:
@@ -63,7 +53,15 @@ jobs:
           rm: false
           overwrite: true
 
-      # 9️⃣ Deploy backend files
+      # 8️⃣ DEBUG: Check what backend files exist
+      - name: Check Backend Files
+        run: |
+          echo "=== Checking backend file structure ==="
+          ls -la
+          echo "=== Checking specific directories ==="
+          ls -la app/ bootstrap/ config/ database/ resources/ routes/ public/ || echo "Some directories might not exist"
+
+      # 9️⃣ Deploy backend files (FIXED - simpler approach)
       - name: Deploy Backend Files
         uses: appleboy/scp-action@master
         with:
@@ -71,19 +69,24 @@ jobs:
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
-          source: |
-            app/
-            bootstrap/
-            config/
-            database/
-            resources/
-            routes/
-            public/
-            artisan
-            composer.json
+          source: "."
           target: "public_html/laravel/"
           rm: false
           overwrite: true
+          strip_components: 1
+          exclude: |
+            .git/
+            .github/
+            frontend/
+            node_modules/
+            storage/
+            vendor/
+            .env
+            .env.example
+            composer.lock
+            package-lock.json
+            github_sftp_key
+            github_sftp_key.pub
 
       # 🔟 Verify Deployment
       - name: Verify Files Were Updated
@@ -94,6 +97,8 @@ jobs:
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
           script: |
+            echo "=== Checking deployed files ==="
+            ls -la ~/public_html/laravel/
             echo "=== Checking public folder ==="
             ls -la ~/public_html/laravel/public/
             echo "=== Deployment verification complete ==="
