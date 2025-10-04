@@ -97,13 +97,21 @@ jobs:
             
             # 1. Navigate to the Laravel application root
             cd ~/public_html/laravel/
+
+            # 2. Deletes the compiled assets (critical for update)
+            rm -rf ./public/assets
+
+            # 3. Deletes the redundant frontend source folder (good cleanup)
+            rm -rf ./public/frontend 
+
+            echo "Cleanup complete."
             
-            # 2. CLEAR CACHES (Essential)
+            # 4. CLEAR CACHES (Essential)
             php artisan config:clear
             php artisan cache:clear
             php artisan view:clear
             
-            # 3. Verification command (The file MUST show a current timestamp)
+            # 5. Verification command (The file MUST show a current timestamp)
             echo "=== Final verification timestamp ==="
             ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
 
