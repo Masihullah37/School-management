@@ -24,60 +24,32 @@ export default function StudentContext({ children }) {
     return await UserApi.login(email, password);
   };
 
-  // const logout = () => {
 
-  //   setUser({});
-  //   setAuthenticated(false);
-  // };
-
-  // StudentContext.jsx
 
 const logout = async () => {
-    // 1. Unconditionally clear local storage *before* the async call
-    //    This is the fastest client-side assurance.
+    // 1. Unconditionally clear the token and authenticated flag from storage
+    //    This is the CRITICAL, non-negotiable step to solve the race condition.
     window.localStorage.removeItem("token");
-    window.localStorage.removeItem("AUTHENTICATED"); // Best practice to remove this too
-
-    // 2. Clear state variables
+    window.localStorage.removeItem("AUTHENTICATED");
+    
+    // 2. Clear state variables (optional but good practice)
     setUser({});
-    _setAuthenticated(false); // Call the internal setter directly if possible, or use setAuthenticated(false)
-
-    // 3. Immediately force a page reload to kill all remaining state
-    //    This prevents any rogue app initialization code from running.
+    setAuthenticated(false);
+    
+    // 3. Immediately force a page reload
+    //    This stops all current JavaScript execution and prevents rogue re-authentication.
     window.location.reload(); 
     
-    // 4. Run the backend call (optional to await, but good practice to include)
+    // 4. Run the backend token invalidation (optional to await, but good practice to include)
     try {
         await UserApi.logout();  
     } catch (error) {
-        // Log the error but continue—client is already logged out via reload
+        // Log the error, but the client is already logged out via reload
         console.error("Backend logout failed:", error);  
     }
 };
 
-// NOTE: Since you are calling window.location.reload(), the lines below 
-// setUser({}) and setAuthenticated(false) are technically not strictly necessary 
-// but are kept for good practice, though they won't execute if the reload is fast.
 
-// Be sure to use the public setAuthenticated wrapper for consistency:
-/*
-const logout = async () => {
-    // 1. Clean up client-side storage first
-    window.localStorage.removeItem("token");
-    setAuthenticated(false); // This removes AUTHENTICATED key
-    setUser({});
-
-    // 2. Immediately reload to clear app state
-    window.location.reload(); 
-
-    // 3. Run backend call
-    try {
-        await UserApi.logout();  
-    } catch (error) {
-        console.error("Backend logout failed:", error);  
-    }
-};
-*/
   const setAuthenticated = (isAuthenticated) => {
     _setAuthenticated(isAuthenticated);
     window.localStorage.setItem("AUTHENTICATED", isAuthenticated);
