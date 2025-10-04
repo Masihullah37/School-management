@@ -98,9 +98,9 @@ const logout = () => { // Make it a standard function
         console.error("❌ Backend logout failed:", error);
     });
 
-    // 3. CRITICAL: IMMEDIATE RELOAD (Execution stops here)
-    //    This must happen instantly after deletion.
-    window.location.replace(window.location.origin + '?logout=' + new Date().getTime());
+     // CRITICAL: Redirect to the base URL without query parameters.
+    // This loads the React app's entry point clean.
+    window.location.replace(window.location.origin); 
 };
 
   const setAuthenticated = (isAuthenticated) => {
