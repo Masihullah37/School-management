@@ -25,83 +25,39 @@ export default function StudentContext({ children }) {
   };
 
 
-// const logout = async () => {
-//   console.log('🔄 Logout function started');
+const logout = async () => {
+  console.log('🔄 Logout function started');
   
-//   // Debug current storage state
-//   console.log('Before removal - Token:', window.localStorage.getItem('token'));
-//   console.log('Before removal - Auth:', window.localStorage.getItem('AUTHENTICATED'));
+  // Debug current storage state
+  console.log('Before removal - Token:', window.localStorage.getItem('token'));
+  console.log('Before removal - Auth:', window.localStorage.getItem('AUTHENTICATED'));
   
-//   try {
-//     await UserApi.logout();
-//     console.log('✅ Backend logout successful');
-//   } catch (error) {
-//     console.error('❌ Backend logout failed:', error);
-//   }
+  try {
+    await UserApi.logout();
+    console.log('✅ Backend logout successful');
+  } catch (error) {
+    console.error('❌ Backend logout failed:', error);
+  }
   
-//   // Clear storage with force
-//   window.localStorage.removeItem('token');
-//   window.localStorage.removeItem('AUTHENTICATED');
+  // Clear storage with force
+  window.localStorage.removeItem('token');
+  window.localStorage.removeItem('AUTHENTICATED');
   
-//   // Force storage sync
-//   window.localStorage.clear();
+  // Force storage sync
+  window.localStorage.clear();
   
-//   // Debug after removal
-//   console.log('After removal - Token:', window.localStorage.getItem('token'));
-//   console.log('After removal - Auth:', window.localStorage.getItem('AUTHENTICATED'));
+  // Debug after removal
+  console.log('After removal - Token:', window.localStorage.getItem('token'));
+  console.log('After removal - Auth:', window.localStorage.getItem('AUTHENTICATED'));
   
-//   setUser({});
-//   setAuthenticated(false);
+  setUser({});
+  setAuthenticated(false);
   
-//   // Add cache busting to reload
-//   const timestamp = new Date().getTime();
-//   window.location.href = window.location.origin + '?nocache=' + timestamp;
-// };
-
-//   const logout = async () => {
-//   console.log("🔄 Logout function started");
-  
-//   // Clear storage FIRST
-//   window.localStorage.removeItem("token");
-//   window.localStorage.removeItem("AUTHENTICATED");
-//   window.localStorage.clear();
-  
-//   console.log("After removal - Token:", window.localStorage.getItem("token"));
-//   console.log("After removal - Auth:", window.localStorage.getItem("AUTHENTICATED"));
-  
-//   // Reset state
-//   n({});
-//   a(false);
-  
-//   // Try backend logout but don't wait for it
-//   ui.logout().catch(d => {
-//     console.error("❌ Backend logout failed:", d);
-//   });
-  
-//   // FORCE complete reload - use location.replace to prevent back button issues
-//   setTimeout(() => {
-//     window.location.replace(window.location.origin + '?logout=' + new Date().getTime());
-//   }, 100);
-// }
-
-  
-const logout = () => { // Make it a standard function
-    console.log("🔄 Logout function started");
-
-    // 1. GUARANTEED IMMEDIATE CLEANUP
-    window.localStorage.removeItem("token");
-    window.localStorage.removeItem("AUTHENTICATED");
-    window.localStorage.clear(); // Aggressively clears everything
-
-    // 2. Fire backend logout (non-blocking)
-    UserApi.logout().catch(error => {
-        console.error("❌ Backend logout failed:", error);
-    });
-
-     // CRITICAL: Redirect to the base URL without query parameters.
-    // This loads the React app's entry point clean.
-    window.location.replace(window.location.origin); 
+  // Add cache busting to reload
+  const timestamp = new Date().getTime();
+  window.location.href = window.location.origin + '?nocache=' + timestamp;
 };
+
 
   const setAuthenticated = (isAuthenticated) => {
     _setAuthenticated(isAuthenticated);
