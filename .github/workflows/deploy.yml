@@ -69,7 +69,23 @@ jobs:
           name: deployment-package
           path: .
 
-      # 2. FILE TRANSFER (The FIX: Use SCP for source/target)
+      # 2. NEW STEP: Pre-Deployment Cleanup (Delete old assets BEFORE transfer)
+      - name: 2. Pre-Deployment Cleanup (Delete Old Assets)
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+         host: ${{ secrets.SFTP_HOST }}
+         username: ${{ secrets.SFTP_USER }}
+         key: ${{ secrets.SFTP_PRIVATE_KEY }}
+         port: ${{ secrets.SFTP_PORT }}
+         script: |
+          echo "--- Running Pre-Deployment Cleanup ---"
+          cd ~/public_html/laravel/
+          # Delete the old assets and the redundant frontend source folder
+          rm -rf ./public/assets
+          rm -rf ./public/frontend
+          echo "Old assets and source folder deleted."
+
+      # 3. FILE TRANSFER (The FIX: Use SCP for source/target)
       - name: 2. Deploy Updated Files via SCP
         uses: appleboy/scp-action@master
         with:
@@ -83,7 +99,7 @@ jobs:
           target: "~/public_html/laravel/"
           overwrite: true # Forces overwrite of files
 
-      # 3. RUN REMOTE COMMANDS (Clear Cache & Verify)
+      # 4. RUN REMOTE COMMANDS (Clear Cache & Verify)
       - name: 3. Run Post-Deployment Commands
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -98,21 +114,15 @@ jobs:
             # 1. Navigate to the Laravel application root
             cd ~/public_html/laravel/
 
-            # 2. Deletes the compiled assets (critical for update)
-            rm -rf ./public/assets
-
-            # 3. Deletes the redundant frontend source folder (good cleanup)
-            rm -rf ./public/frontend 
-
-            echo "Cleanup complete."
+           
             
-            # 4. CLEAR CACHES (Essential)
+            # 2. CLEAR CACHES (Essential)
             php artisan config:clear
             php artisan cache:clear
             php artisan view:clear
             
-            # 5. Verification command (The file MUST show a current timestamp)
+            # 3. Verification command (The file MUST show a current timestamp)
             echo "=== Final verification timestamp ==="
-            ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
+            ls -la ./public/assets # Verify the directory exists and has files
 
             echo "--- Deployment Complete! ---"
