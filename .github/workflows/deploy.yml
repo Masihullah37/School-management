@@ -7,7 +7,7 @@ on:
 
 jobs:
   # ----------------------------------------------------
-  # 1. BUILD PHASE (Dependencies and Assets)
+  # 1. BUILD PHASE
   # ----------------------------------------------------
   build:
     runs-on: ubuntu-latest
@@ -38,7 +38,7 @@ jobs:
         run: npm run build
         working-directory: ./frontend
         
-      # Archive the build artifacts for the next job
+      # Archive the built files for the next job
       - name: 7. Archive Build Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -47,24 +47,23 @@ jobs:
             ./*
             !./node_modules
             !./frontend/node_modules
-            # NOTE: We keep vendor/ here because it was built in step 3.
 
   # ----------------------------------------------------
   # 2. DEPLOY PHASE (Requires successful build)
   # ----------------------------------------------------
   deploy:
-    needs: build # This job runs only if 'build' succeeds
+    needs: build
     runs-on: ubuntu-latest
     
     steps:
-      # Download the built files and vendor directory
+      # 1. Download the built files
       - name: 1. Download Build Artifacts
         uses: actions/download-artifact@v4
         with:
           name: deployment-package
           path: .
 
-      # 2. Deploy Updated Files via SCP (FIX: Use a more specific transfer method)
+      # 2. FILE TRANSFER (The FIX: Use SCP for source/target)
       - name: 2. Deploy Updated Files via SCP
         uses: appleboy/scp-action@master
         with:
@@ -73,13 +72,12 @@ jobs:
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
 
-          # CRITICAL: We explicitly list the directories to ensure they are copied fully.
-          # This should force the overwrite and update the files reliably.
-          source: "{app,bootstrap,config,database,public,resources,routes,vendor,frontend}"
+          # CRITICAL: This is the only way to reliably transfer all files.
+          source: "./"
           target: "~/public_html/laravel/"
-          overwrite: true
+          overwrite: true # Forces overwrite of files
 
-      # 3. Post-Deployment Commands (Cache Clearing)
+      # 3. RUN REMOTE COMMANDS (Clear Cache & Verify)
       - name: 3. Run Post-Deployment Commands
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -90,14 +88,16 @@ jobs:
           
           script: |
             echo "--- Starting Post-Deployment Cleanup on Hostinger ---"            
+            
+            # 1. Navigate to the Laravel application root
             cd ~/public_html/laravel/
             
-            # CLEAR CACHES (Essential)
+            # 2. CLEAR CACHES (Essential)
             php artisan config:clear
             php artisan cache:clear
             php artisan view:clear
             
-            # Verification command (The file MUST show a current timestamp now)
+            # 3. Verification command (The file MUST show a current timestamp)
             echo "=== Final verification timestamp ==="
             ls -la ~/public_html/laravel/app/Http/Controllers/Controller.php
 
