@@ -25,27 +25,37 @@ export default function StudentContext({ children }) {
   };
 
 
-
-
 const logout = async () => {
-    // A. Perform the asynchronous server call FIRST.
-    //    We don't need to await it, as we will reload anyway.
-    UserApi.logout().catch(error => {
-        console.error("Backend logout failed:", error);
-    });
-    
-    // B. Synchronous Cleanup: Must execute immediately and fully.
-    window.localStorage.removeItem("token");
-    window.localStorage.removeItem("AUTHENTICATED");
-    
-    // C. Reset State (Necessary for any component that renders before the refresh)
-    setUser({});
-    setAuthenticated(false);
-    
-    // D. CRITICAL: FORCE PAGE RELOAD
-    //    This must be the LAST step to guarantee a clean state.
-    //    Execution stops here.
-    window.location.reload(); 
+  console.log('🔄 Logout function started');
+  
+  // Debug current storage state
+  console.log('Before removal - Token:', window.localStorage.getItem('token'));
+  console.log('Before removal - Auth:', window.localStorage.getItem('AUTHENTICATED'));
+  
+  try {
+    await UserApi.logout();
+    console.log('✅ Backend logout successful');
+  } catch (error) {
+    console.error('❌ Backend logout failed:', error);
+  }
+  
+  // Clear storage with force
+  window.localStorage.removeItem('token');
+  window.localStorage.removeItem('AUTHENTICATED');
+  
+  // Force storage sync
+  window.localStorage.clear();
+  
+  // Debug after removal
+  console.log('After removal - Token:', window.localStorage.getItem('token'));
+  console.log('After removal - Auth:', window.localStorage.getItem('AUTHENTICATED'));
+  
+  setUser({});
+  setAuthenticated(false);
+  
+  // Add cache busting to reload
+  const timestamp = new Date().getTime();
+  window.location.href = window.location.origin + '?nocache=' + timestamp;
 };
 
 
