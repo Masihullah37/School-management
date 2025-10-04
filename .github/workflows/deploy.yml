@@ -38,8 +38,14 @@ jobs:
         run: npm run build
         working-directory: ./frontend
         
+      # 👇 CRITICAL FIX: Move the built assets into the Laravel public folder
+      - name: 7. Copy Frontend Assets to Public
+        # The 'frontend/dist' directory contains the compiled index.html, assets/, etc.
+        # We copy its *contents* directly into the repository's 'public/' directory.
+        run: cp -R frontend/dist/* public/  
+        
       # Archive the built files for the next job
-      - name: 7. Archive Build Artifacts
+      - name: 8. Archive Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: deployment-package
