@@ -38,13 +38,31 @@ jobs:
         run: npm run build
         working-directory: ./frontend
 
-      # 👇 NEW CRITICAL STEP: Add unique hash to index.html for cache busting
-      - name: 7. Cache Bust Index.html
+            
+      - name: 7. Proper Cache Busting for Assets
         run: |
           BUILD_HASH=$(git rev-parse --short HEAD)
-          # Inject the hash as a dummy parameter on the main script link in index.html
-          # This forces the browser to load a new version of the main JS file.
-          sed -i "s/\(type=\"module\" crossorigin src=\"\/assets\/index-.*\.js\"\)\"/\1?v=$BUILD_HASH\"/" frontend/dist/index.html  
+          
+          # Navigate to the dist directory
+          cd frontend/dist
+          
+          # Add hash to all JS and CSS files and update references in index.html
+          for file in assets/*.js assets/*.css; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              extension="${filename##*.}"
+              nameonly="${filename%.*}"
+              
+              # Create new filename with hash
+              new_filename="${nameonly}-${BUILD_HASH}.${extension}"
+              mv "$file" "assets/${new_filename}"
+              
+              # Update all references in index.html
+              sed -i "s/$filename/$new_filename/g" index.html
+            fi
+          done
+          
+          echo "Cache busting completed with hash: $BUILD_HASH"  
         
       # 👇 CRITICAL FIX: Move the built assets into the Laravel public folder
       - name: 8. Copy Frontend Assets to Public
