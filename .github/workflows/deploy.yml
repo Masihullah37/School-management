@@ -37,15 +37,23 @@ jobs:
       - name: 6. Build frontend Assets
         run: npm run build
         working-directory: ./frontend
+
+      # 👇 NEW CRITICAL STEP: Add unique hash to index.html for cache busting
+      - name: 7. Cache Bust Index.html
+        run: |
+          BUILD_HASH=$(git rev-parse --short HEAD)
+          # Inject the hash as a dummy parameter on the main script link in index.html
+          # This forces the browser to load a new version of the main JS file.
+          sed -i "s/\(type=\"module\" crossorigin src=\"\/assets\/index-.*\.js\"\)\"/\1?v=$BUILD_HASH\"/" frontend/dist/index.html  
         
       # 👇 CRITICAL FIX: Move the built assets into the Laravel public folder
-      - name: 7. Copy Frontend Assets to Public
+      - name: 8. Copy Frontend Assets to Public
         # The 'frontend/dist' directory contains the compiled index.html, assets/, etc.
         # We copy its *contents* directly into the repository's 'public/' directory.
         run: cp -R frontend/dist/* public/  
         
       # Archive the built files for the next job
-      - name: 8. Archive Build Artifacts
+      - name: 9. Archive Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: deployment-package
