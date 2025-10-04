@@ -26,27 +26,26 @@ export default function StudentContext({ children }) {
 
 
 
+
 const logout = async () => {
-    // 1. Unconditionally clear the token and authenticated flag from storage
-    //    This is the CRITICAL, non-negotiable step to solve the race condition.
+    // A. Perform the asynchronous server call FIRST.
+    //    We don't need to await it, as we will reload anyway.
+    UserApi.logout().catch(error => {
+        console.error("Backend logout failed:", error);
+    });
+    
+    // B. Synchronous Cleanup: Must execute immediately and fully.
     window.localStorage.removeItem("token");
     window.localStorage.removeItem("AUTHENTICATED");
     
-    // 2. Clear state variables (optional but good practice)
+    // C. Reset State (Necessary for any component that renders before the refresh)
     setUser({});
     setAuthenticated(false);
     
-    // 3. Immediately force a page reload
-    //    This stops all current JavaScript execution and prevents rogue re-authentication.
+    // D. CRITICAL: FORCE PAGE RELOAD
+    //    This must be the LAST step to guarantee a clean state.
+    //    Execution stops here.
     window.location.reload(); 
-    
-    // 4. Run the backend token invalidation (optional to await, but good practice to include)
-    try {
-        await UserApi.logout();  
-    } catch (error) {
-        // Log the error, but the client is already logged out via reload
-        console.error("Backend logout failed:", error);  
-    }
 };
 
 
