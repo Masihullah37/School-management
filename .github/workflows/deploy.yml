@@ -35,7 +35,7 @@ jobs:
           echo "=== Cleaning previous builds ==="
           rm -rf frontend/dist
           rm -rf public/assets
-          rm -rf public/index.html
+          rm -f public/index.html
 
       - name: 6. Install npm packages
         run: npm ci
@@ -180,62 +180,58 @@ jobs:
             echo "=== Checking deployed content ==="
             grep -r "welcome to homepage" ./public/assets/ || echo "Checking for new content..."
             
-            # 4. Update .htaccess with cache control
+            # 4. Update .htaccess with cache control using echo commands
             echo "=== Updating .htaccess ==="
-            cat > ./public/.htaccess << 'EOL'
-# Prefer index.html over index.php
-DirectoryIndex index.html index.php
-
-<IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
-
-    RewriteEngine On
-
-    # If the request is not a file or directory, send to index.php
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.php [L]
-</IfModule>
-
-# DISABLE CACHING FOR DEVELOPMENT
-<IfModule mod_headers.c>
-    # Disable caching for HTML
-    <FilesMatch "\.(html|htm)$">
-        Header set Cache-Control "no-cache, no-store, must-revalidate"
-        Header set Pragma "no-cache"
-        Header set Expires 0
-    </FilesMatch>
-    
-    # Disable caching for JS and CSS
-    <FilesMatch "\.(js|css)$">
-        Header set Cache-Control "no-cache, no-store, must-revalidate"
-        Header set Pragma "no-cache" 
-        Header set Expires 0
-    </FilesMatch>
-    
-    # Cache images for 1 hour only
-    <FilesMatch "\.(jpg|jpeg|png|gif|ico|svg)$">
-        Header set Cache-Control "max-age=3600, public"
-    </FilesMatch>
-</IfModule>
-EOL
+            echo "# Prefer index.html over index.php" > ./public/.htaccess
+            echo "DirectoryIndex index.html index.php" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            echo "<IfModule mod_rewrite.c>" >> ./public/.htaccess
+            echo "    <IfModule mod_negotiation.c>" >> ./public/.htaccess
+            echo "        Options -MultiViews -Indexes" >> ./public/.htaccess
+            echo "    </IfModule>" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            echo "    RewriteEngine On" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            echo "    # If the request is not a file or directory, send to index.php" >> ./public/.htaccess
+            echo "    RewriteCond %{REQUEST_FILENAME} !-d" >> ./public/.htaccess
+            echo "    RewriteCond %{REQUEST_FILENAME} !-f" >> ./public/.htaccess
+            echo "    RewriteRule ^ index.php [L]" >> ./public/.htaccess
+            echo "</IfModule>" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            echo "# DISABLE CACHING FOR DEVELOPMENT" >> ./public/.htaccess
+            echo "<IfModule mod_headers.c>" >> ./public/.htaccess
+            echo "    # Disable caching for HTML" >> ./public/.htaccess
+            echo "    <FilesMatch \"\\.(html|htm)$\">" >> ./public/.htaccess
+            echo "        Header set Cache-Control \"no-cache, no-store, must-revalidate\"" >> ./public/.htaccess
+            echo "        Header set Pragma \"no-cache\"" >> ./public/.htaccess
+            echo "        Header set Expires 0" >> ./public/.htaccess
+            echo "    </FilesMatch>" >> ./public/.htaccess
+            echo "    " >> ./public/.htaccess
+            echo "    # Disable caching for JS and CSS" >> ./public/.htaccess
+            echo "    <FilesMatch \"\\.(js|css)$\">" >> ./public/.htaccess
+            echo "        Header set Cache-Control \"no-cache, no-store, must-revalidate\"" >> ./public/.htaccess
+            echo "        Header set Pragma \"no-cache\" " >> ./public/.htaccess
+            echo "        Header set Expires 0" >> ./public/.htaccess
+            echo "    </FilesMatch>" >> ./public/.htaccess
+            echo "    " >> ./public/.htaccess
+            echo "    # Cache images for 1 hour only" >> ./public/.htaccess
+            echo "    <FilesMatch \"\\.(jpg|jpeg|png|gif|ico|svg)$\">" >> ./public/.htaccess
+            echo "        Header set Cache-Control \"max-age=3600, public\"" >> ./public/.htaccess
+            echo "    </FilesMatch>" >> ./public/.htaccess
+            echo "</IfModule>" >> ./public/.htaccess
             
             # 5. Set proper permissions
             chmod 644 ./public/.htaccess
             
             # 6. Also update the main .htaccess in laravel root
-            cat > ./.htaccess << 'EOL'
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteBase /laravel/
-
-    # Rediriger tout vers le dossier public
-    RewriteCond %{REQUEST_URI} !^/laravel/public
-    RewriteRule ^(.*)$ public/$1 [L]
-</IfModule>
-EOL
+            echo "<IfModule mod_rewrite.c>" > ./.htaccess
+            echo "    RewriteEngine On" >> ./.htaccess
+            echo "    RewriteBase /laravel/" >> ./.htaccess
+            echo "" >> ./.htaccess
+            echo "    # Rediriger tout vers le dossier public" >> ./.htaccess
+            echo "    RewriteCond %{REQUEST_URI} !^/laravel/public" >> ./.htaccess
+            echo "    RewriteRule ^(.*)$ public/$1 [L]" >> ./.htaccess
+            echo "</IfModule>" >> ./.htaccess
             
             chmod 644 ./.htaccess
             
