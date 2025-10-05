@@ -30,31 +30,52 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 5. Install npm packages
+      - name: 5. Clean Previous Builds
+        run: |
+          echo "=== Cleaning previous builds ==="
+          rm -rf frontend/dist
+          rm -rf public/assets
+          rm -rf public/index.html
+
+      - name: 6. Install npm packages
         run: npm ci
         working-directory: ./frontend 
 
-      - name: 6. Build frontend Assets
-        run: npm run build
+      - name: 7. Verify Source Changes
+        run: |
+          echo "=== Checking if changes are in source code ==="
+          grep -r "welcome to homepage" ./frontend/src/ || echo "Content check completed"
         working-directory: ./frontend
-            
-      - name: 7. Enhanced Cache Busting for Assets
+
+      - name: 8. Build frontend Assets
+        run: |
+          echo "=== Building frontend ==="
+          npm run build
+          echo "=== Build completed ==="
+        working-directory: ./frontend
+
+      - name: 9. Enhanced Cache Busting for Assets
         run: |
           BUILD_HASH=$(git rev-parse --short HEAD)
           TIMESTAMP=$(date +%s)
+          RANDOM_SUFFIX=$(openssl rand -hex 4)
+          
+          echo "=== Starting aggressive cache busting ==="
+          echo "Hash: $BUILD_HASH, Timestamp: $TIMESTAMP, Random: $RANDOM_SUFFIX"
           
           # Navigate to the dist directory
           cd frontend/dist
           
-          # Add hash AND timestamp to all JS and CSS files
+          # Add hash, timestamp AND random suffix to all JS and CSS files
           for file in assets/*.js assets/*.css; do
             if [ -f "$file" ]; then
               filename=$(basename "$file")
               extension="${filename##*.}"
               nameonly="${filename%.*}"
               
-              # Create new filename with hash AND timestamp
-              new_filename="${nameonly}-${BUILD_HASH}-${TIMESTAMP}.${extension}"
+              # Create new filename with hash, timestamp AND random
+              new_filename="${nameonly}-${BUILD_HASH}-${TIMESTAMP}-${RANDOM_SUFFIX}.${extension}"
+              echo "Renaming: $filename -> $new_filename"
               mv "$file" "assets/${new_filename}"
               
               # Update all references in index.html
@@ -62,14 +83,26 @@ jobs:
             fi
           done
           
-          echo "Cache busting completed with hash: $BUILD_HASH and timestamp: $TIMESTAMP"
-        
-      # 👇 CRITICAL FIX: Move the built assets into the Laravel public folder
-      - name: 8. Copy Frontend Assets to Public
-        run: cp -R frontend/dist/* public/  
-        
-      # Archive the built files for the next job
-      - name: 9. Archive Build Artifacts
+          # Also add query parameter cache busting as backup
+          sed -i "s/\.js\"/.js?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
+          sed -i "s/\.css\"/.css?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
+          
+          echo "=== Cache busting completed ==="
+          echo "=== Final index.html content ==="
+          grep -E "(\.js|\.css)" index.html
+
+      - name: 10. Copy Frontend Assets to Public
+        run: |
+          echo "=== Contents of frontend/dist before copy ==="
+          ls -la frontend/dist/
+          echo "=== Copying files to public ==="
+          cp -R frontend/dist/* public/
+          echo "=== Contents of public after copy ==="
+          ls -la public/
+          echo "=== Verifying content in final files ==="
+          grep -r "welcome to homepage" public/ || echo "Content verification completed"
+
+      - name: 11. Archive Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: deployment-package
@@ -107,7 +140,10 @@ jobs:
             # Delete the old assets and the redundant frontend source folder
             rm -rf ./public/assets
             rm -rf ./public/frontend
-            echo "Old assets and source folder deleted."
+            rm -f ./public/index.html
+            rm -f ./public/vite.svg
+            rm -f ./public/robots.txt
+            echo "Old assets and files deleted."
 
       # 3. FILE TRANSFER (Use SCP for source/target)
       - name: 3. Deploy Updated Files via SCP
@@ -140,14 +176,75 @@ jobs:
             php artisan cache:clear
             php artisan view:clear
             
-            # 3. Test if mod_headers is working
-            echo "=== Testing mod_headers ==="
-            curl -I https://laravel.test.icvinformatique.com/laravel/public/ | grep -i "cache-control" || echo "mod_headers might not be working"
+            # 3. Check if new content is actually deployed
+            echo "=== Checking deployed content ==="
+            grep -r "welcome to homepage" ./public/assets/ || echo "Checking for new content..."
             
-            echo "=== Final verification timestamp ==="
-            ls -la ./public/assets
-            echo "--- Deployment Complete! ---"
+            # 4. Update .htaccess with cache control
+            echo "=== Updating .htaccess ==="
+            cat > ./public/.htaccess << 'EOL'
+# Prefer index.html over index.php
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # If the request is not a file or directory, send to index.php
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# DISABLE CACHING FOR DEVELOPMENT
+<IfModule mod_headers.c>
+    # Disable caching for HTML
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+    
+    # Disable caching for JS and CSS
+    <FilesMatch "\.(js|css)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache" 
+        Header set Expires 0
+    </FilesMatch>
+    
+    # Cache images for 1 hour only
+    <FilesMatch "\.(jpg|jpeg|png|gif|ico|svg)$">
+        Header set Cache-Control "max-age=3600, public"
+    </FilesMatch>
+</IfModule>
+EOL
             
-            echo "=== Final verification timestamp ==="
-            ls -la ./public/assets
+            # 5. Set proper permissions
+            chmod 644 ./public/.htaccess
+            
+            # 6. Also update the main .htaccess in laravel root
+            cat > ./.htaccess << 'EOL'
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /laravel/
+
+    # Rediriger tout vers le dossier public
+    RewriteCond %{REQUEST_URI} !^/laravel/public
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+EOL
+            
+            chmod 644 ./.htaccess
+            
+            # 7. Final verification
+            echo "=== Final verification ==="
+            echo "File list:"
+            ls -la ./public/assets/
+            echo "File sizes and timestamps:"
+            ls -lh ./public/assets/
+            echo "=== Checking if we can find the new content ==="
+            find ./public/assets/ -name "*.js" -exec grep -l "welcome to homepage" {} \; || echo "Searching for content..."
             echo "--- Deployment Complete! ---"
