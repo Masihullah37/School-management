@@ -66,8 +66,6 @@ jobs:
         
       # 👇 CRITICAL FIX: Move the built assets into the Laravel public folder
       - name: 8. Copy Frontend Assets to Public
-        # The 'frontend/dist' directory contains the compiled index.html, assets/, etc.
-        # We copy its *contents* directly into the repository's 'public/' directory.
         run: cp -R frontend/dist/* public/  
         
       # Archive the built files for the next job
@@ -95,7 +93,7 @@ jobs:
           name: deployment-package
           path: .
 
-      # 2. NEW STEP: Pre-Deployment Cleanup (Delete old assets BEFORE transfer)
+      # 2. Pre-Deployment Cleanup (Delete old assets BEFORE transfer)
       - name: 2. Pre-Deployment Cleanup (Delete Old Assets)
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -111,7 +109,7 @@ jobs:
             rm -rf ./public/frontend
             echo "Old assets and source folder deleted."
 
-      # 3. FILE TRANSFER (The FIX: Use SCP for source/target)
+      # 3. FILE TRANSFER (Use SCP for source/target)
       - name: 3. Deploy Updated Files via SCP
         uses: appleboy/scp-action@master
         with:
@@ -119,11 +117,9 @@ jobs:
           username: ${{ secrets.SFTP_USER }}
           key: ${{ secrets.SFTP_PRIVATE_KEY }}
           port: ${{ secrets.SFTP_PORT }}
-
-          # CRITICAL: This is the only way to reliably transfer all files.
           source: "./"
           target: "~/public_html/laravel/"
-          overwrite: true # Forces overwrite of files
+          overwrite: true
 
       # 4. RUN REMOTE COMMANDS (Clear Cache & Verify)
       - name: 4. Run Post-Deployment Commands
@@ -145,7 +141,7 @@ jobs:
             php artisan view:clear
             
             # 3. Update .htaccess with cache control
-            cat > ./public/.htaccess << 'EOF'
+            cat > ./public/.htaccess << 'EOL'
 # Prefer index.html over index.php
 DirectoryIndex index.html index.php
 
@@ -183,13 +179,13 @@ DirectoryIndex index.html index.php
         Header set Cache-Control "max-age=3600, public"
     </FilesMatch>
 </IfModule>
-EOF
+EOL
             
             # 4. Set proper permissions
             chmod 644 ./public/.htaccess
             
             # 5. Also update the main .htaccess in laravel root
-            cat > ./.htaccess << 'EOF'
+            cat > ./.htaccess << 'EOL'
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /laravel/
@@ -198,7 +194,7 @@ EOF
     RewriteCond %{REQUEST_URI} !^/laravel/public
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
-EOF
+EOL
             
             chmod 644 ./.htaccess
             
