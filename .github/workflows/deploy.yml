@@ -39,30 +39,31 @@ jobs:
         working-directory: ./frontend
 
             
-      - name: 7. Proper Cache Busting for Assets
-        run: |
-          BUILD_HASH=$(git rev-parse --short HEAD)
-          
-          # Navigate to the dist directory
-          cd frontend/dist
-          
-          # Add hash to all JS and CSS files and update references in index.html
-          for file in assets/*.js assets/*.css; do
-            if [ -f "$file" ]; then
-              filename=$(basename "$file")
-              extension="${filename##*.}"
-              nameonly="${filename%.*}"
-              
-              # Create new filename with hash
-              new_filename="${nameonly}-${BUILD_HASH}.${extension}"
-              mv "$file" "assets/${new_filename}"
-              
-              # Update all references in index.html
-              sed -i "s/$filename/$new_filename/g" index.html
-            fi
-          done
-          
-          echo "Cache busting completed with hash: $BUILD_HASH"  
+      - name: 7. Enhanced Cache Busting for Assets
+  run: |
+    BUILD_HASH=$(git rev-parse --short HEAD)
+    TIMESTAMP=$(date +%s)
+    
+    # Navigate to the dist directory
+    cd frontend/dist
+    
+    # Add hash AND timestamp to all JS and CSS files
+    for file in assets/*.js assets/*.css; do
+      if [ -f "$file" ]; then
+        filename=$(basename "$file")
+        extension="${filename##*.}"
+        nameonly="${filename%.*}"
+        
+        # Create new filename with hash AND timestamp
+        new_filename="${nameonly}-${BUILD_HASH}-${TIMESTAMP}.${extension}"
+        mv "$file" "assets/${new_filename}"
+        
+        # Update all references in index.html
+        sed -i "s/$filename/$new_filename/g" index.html
+      fi
+    done
+    
+    echo "Cache busting completed with hash: $BUILD_HASH and timestamp: $TIMESTAMP" 
         
       # 👇 CRITICAL FIX: Move the built assets into the Laravel public folder
       - name: 8. Copy Frontend Assets to Public
@@ -127,28 +128,88 @@ jobs:
 
       # 4. RUN REMOTE COMMANDS (Clear Cache & Verify)
       - name: 3. Run Post-Deployment Commands
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.SFTP_HOST }}
-          username: ${{ secrets.SFTP_USER }}
-          key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
+  uses: appleboy/ssh-action@v0.1.10
+  with:
+    host: ${{ secrets.SFTP_HOST }}
+    username: ${{ secrets.SFTP_USER }}
+    key: ${{ secrets.SFTP_PRIVATE_KEY }}
+    port: ${{ secrets.SFTP_PORT }}
+    script: |
+      echo "--- Starting Post-Deployment Cleanup on Hostinger ---"
+      
+      # 1. Navigate to the Laravel application root
+      cd ~/public_html/laravel/
+      
+      # 2. CLEAR CACHES (Essential)
+      php artisan config:clear
+      php artisan cache:clear
+      php artisan view:clear
+      
+      # 3. Update .htaccess with cache control
+      cat > ./public/.htaccess << 'EOF'
+# Prefer index.html over index.php
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # If the request is not a file or directory, send to index.php
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# DISABLE CACHING FOR DEVELOPMENT
+<IfModule mod_headers.c>
+    # Disable caching for HTML
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+    
+    # Disable caching for JS and CSS
+    <FilesMatch "\.(js|css)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache" 
+        Header set Expires 0
+    </FilesMatch>
+</IfModule>
+EOF
+      
+      # 4. Set proper permissions
+      chmod 644 ./public/.htaccess
+      
+      echo "=== Final verification timestamp ==="
+      ls -la ./public/assets
+      echo "--- Deployment Complete! ---"
+      # - name: 3. Run Post-Deployment Commands
+      #   uses: appleboy/ssh-action@v0.1.10
+      #   with:
+      #     host: ${{ secrets.SFTP_HOST }}
+      #     username: ${{ secrets.SFTP_USER }}
+      #     key: ${{ secrets.SFTP_PRIVATE_KEY }}
+      #     port: ${{ secrets.SFTP_PORT }}
           
-          script: |
-            echo "--- Starting Post-Deployment Cleanup on Hostinger ---"            
+      #     script: |
+      #       echo "--- Starting Post-Deployment Cleanup on Hostinger ---"            
             
-            # 1. Navigate to the Laravel application root
-            cd ~/public_html/laravel/
+      #       # 1. Navigate to the Laravel application root
+      #       cd ~/public_html/laravel/
 
            
             
-            # 2. CLEAR CACHES (Essential)
-            php artisan config:clear
-            php artisan cache:clear
-            php artisan view:clear
+      #       # 2. CLEAR CACHES (Essential)
+      #       php artisan config:clear
+      #       php artisan cache:clear
+      #       php artisan view:clear
             
-            # 3. Verification command (The file MUST show a current timestamp)
-            echo "=== Final verification timestamp ==="
+      #       # 3. Verification command (The file MUST show a current timestamp)
+      #       echo "=== Final verification timestamp ==="
             ls -la ./public/assets # Verify the directory exists and has files
 
             echo "--- Deployment Complete! ---"
