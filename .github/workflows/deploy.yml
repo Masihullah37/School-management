@@ -1,251 +1,257 @@
 name: Laravel CI/CD Pipeline
 
 on:
-  push:
-    branches:
-      - main
+  push:
+    branches:
+      - main
 
 jobs:
-  # ----------------------------------------------------
-  # 1. BUILD PHASE
-  # ----------------------------------------------------
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 1. Checkout Code
-        uses: actions/checkout@v4
+  # ----------------------------------------------------
+  # 1. BUILD PHASE
+  # ----------------------------------------------------
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Checkout Code
+        uses: actions/checkout@v4
 
-      - name: 2. Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, pdo_mysql, dom, bcmath, curl
-          tools: composer
+      - name: 2. Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, dom, bcmath, curl
+          tools: composer
 
-      - name: 3. Install Composer packages
-        run: composer install --no-dev --prefer-dist --optimize-autoloader
+      - name: 3. Install Composer packages
+        run: composer install --no-dev --prefer-dist --optimize-autoloader
 
-      - name: 4. Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
+      - name: 4. Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
-      - name: 5. Clean Previous Builds
-        run: |
-          echo "=== Cleaning previous builds ==="
-          rm -rf frontend/dist
-          rm -rf public/assets
-          rm -f public/index.html
+      - name: 5. Clean Previous Builds
+        run: |
+          echo "=== Cleaning previous builds ==="
+          rm -rf frontend/dist
+          rm -rf public/assets
+          rm -f public/index.html
 
-      - name: 6. Install npm packages
-        run: npm ci
-        working-directory: ./frontend 
+      - name: 6. Install npm packages
+        run: npm ci
+        working-directory: ./frontend 
 
-      - name: 7. Verify Source Changes
-        run: |
-          echo "=== Checking if changes are in source code ==="
-          grep -r "welcome to homepage" ./frontend/src/ || echo "Content check completed"
-        working-directory: ./frontend
+      - name: 7. Verify Source Changes
+        run: |
+          echo "=== Checking if changes are in source code ==="
+          grep -r "welcome to homepage" ./frontend/src/ || echo "Content check completed"
+        working-directory: ./frontend
 
-      - name: 8. Build frontend Assets
-        run: |
-          echo "=== Building frontend ==="
-          npm run build
-          echo "=== Build completed ==="
-        working-directory: ./frontend
+      - name: 8. Build frontend Assets
+        run: |
+          echo "=== Building frontend ==="
+          npm run build
+          echo "=== Build completed ==="
+        working-directory: ./frontend
 
-      - name: 9. Enhanced Cache Busting for Assets
-        run: |
-          BUILD_HASH=$(git rev-parse --short HEAD)
-          TIMESTAMP=$(date +%s)
-          RANDOM_SUFFIX=$(openssl rand -hex 4)
-    
-          echo "=== Starting aggressive cache busting ==="
-          echo "Hash: $BUILD_HASH, Timestamp: $TIMESTAMP, Random: $RANDOM_SUFFIX"
-    
-        # Navigate to the dist directory
-cd frontend/dis
+      - name: 9. Enhanced Cache Busting for Assets
+        run: |
+          BUILD_HASH=$(git rev-parse --short HEAD)
+          TIMESTAMP=$(date +%s)
+          RANDOM_SUFFIX=$(openssl rand -hex 4)
+    
+          echo "=== Starting aggressive cache busting ==="
+          echo "Hash: $BUILD_HASH, Timestamp: $TIMESTAMP, Random: $RANDOM_SUFFIX"
+    
+          # Navigate to the dist directory
+          cd frontend/dist # CORRECTED LINE 67
+    
+          # List files before renaming
+          echo "=== Files before renaming ==="
+          ls -la assets/
+          
+          # Add hash, timestamp AND random suffix to all JS and CSS files
+          for file in assets/*.js assets/*.css; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              extension="${filename##*.}"
+              nameonly="${filename%.*}"
+              
+              # Create new filename with hash, timestamp AND random
+              new_filename="${nameonly}-${BUILD_HASH}-${TIMESTAMP}-${RANDOM_SUFFIX}.${extension}"
+              echo "Renaming: $filename -> $new_filename"
+              mv "$file" "assets/${new_filename}"
+              
+              # Update all references in index.html
+              sed -i "s/$filename/$new_filename/g" index.html
+            fi
+          done
+          
+          # Also add query parameter cache busting as backup
+          sed -i "s/\.js\"/.js?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
+          sed -i "s/\.css\"/.css?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
+          
+          echo "=== Files after renaming ==="
+          ls -la assets/
+          echo "=== Final index.html content ==="
+          grep -E "(\.js|\.css)" index.html
 
-# List files before renaming
-    echo "=== Files before renaming ==="
-    ls -la assets/
-    
-    # Add hash, timestamp AND random suffix to all JS and CSS files
-    for file in assets/*.js assets/*.css; do
-      if [ -f "$file" ]; then
-        filename=$(basename "$file")
-        extension="${filename##*.}"
-        nameonly="${filename%.*}"
-        
-        # Create new filename with hash, timestamp AND random
-        new_filename="${nameonly}-${BUILD_HASH}-${TIMESTAMP}-${RANDOM_SUFFIX}.${extension}"
-        echo "Renaming: $filename -> $new_filename"
-        mv "$file" "assets/${new_filename}"
-        
-        # Update all references in index.html
-        sed -i "s/$filename/$new_filename/g" index.html
-      fi
-    done
-    
-    # Also add query parameter cache busting as backup
-    sed -i "s/\.js\"/.js?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
-    sed -i "s/\.css\"/.css?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
-    
-    echo "=== Files after renaming ==="
-    ls -la assets/
-    echo "=== Final index.html content ==="
-    grep -E "(\.js|\.css)" index.html
+      - name: 10. Copy Frontend Assets to Public
+        run: |
+          echo "=== Contents of frontend/dist before copy ==="
+          ls -la frontend/dist/
+          echo "=== Copying files to public ==="
+          cp -R frontend/dist/* public/
+          echo "=== Contents of public after copy ==="
+          ls -la public/
+          echo "=== Verifying content in final files ==="
+          grep -r "welcome to homepage" public/ || echo "Content verification completed"
 
-      - name: 10. Copy Frontend Assets to Public
-        run: |
-          echo "=== Contents of frontend/dist before copy ==="
-          ls -la frontend/dist/
-          echo "=== Copying files to public ==="
-          cp -R frontend/dist/* public/
-          echo "=== Contents of public after copy ==="
-          ls -la public/
-          echo "=== Verifying content in final files ==="
-          grep -r "welcome to homepage" public/ || echo "Content verification completed"
+      - name: 11. Archive Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-package
+          path: |
+            ./*
+            !./node_modules
+            !./frontend/node_modules
 
-      - name: 11. Archive Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-package
-          path: |
-            ./*
-            !./node_modules
-            !./frontend/node_modules
+  # ----------------------------------------------------
+  # 2. DEPLOY PHASE (Requires successful build)
+  # ----------------------------------------------------
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Download the built files
+      - name: 1. Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-package
+          path: .
 
-  # ----------------------------------------------------
-  # 2. DEPLOY PHASE (Requires successful build)
-  # ----------------------------------------------------
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    
-    steps:
-      # 1. Download the built files
-      - name: 1. Download Build Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: deployment-package
-          path: .
+      # 2. Pre-Deployment Cleanup (Delete old assets BEFORE transfer)
+      - name: 2. Pre-Deployment Cleanup (Delete Old Assets)
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          script: |
+            echo "--- Running Pre-Deployment Cleanup ---"
+            cd ~/public_html/laravel/
+            # Delete the old assets and the redundant frontend source folder
+            rm -rf ./public/assets
+            rm -rf ./public/frontend
+            rm -f ./public/index.html
+            rm -f ./public/vite.svg
+            rm -f ./public/robots.txt
+            echo "Old assets and files deleted."
 
-      # 2. Pre-Deployment Cleanup (Delete old assets BEFORE transfer)
-      - name: 2. Pre-Deployment Cleanup (Delete Old Assets)
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.SFTP_HOST }}
-          username: ${{ secrets.SFTP_USER }}
-          key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
-          script: |
-            echo "--- Running Pre-Deployment Cleanup ---"
-            cd ~/public_html/laravel/
-            # Delete the old assets and the redundant frontend source folder
-            rm -rf ./public/assets
-            rm -rf ./public/frontend
-            rm -f ./public/index.html
-            rm -f ./public/vite.svg
-            rm -f ./public/robots.txt
-            echo "Old assets and files deleted."
+      # 3. FILE TRANSFER (Use SCP for source/target)
+      - name: 3. Deploy Updated Files via SCP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SFTP_HOST }} 
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          source: "./"
+          target: "~/public_html/laravel/"
+          overwrite: true
 
-      # 3. FILE TRANSFER (Use SCP for source/target)
-      - name: 3. Deploy Updated Files via SCP
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SFTP_HOST }} 
-          username: ${{ secrets.SFTP_USER }}
-          key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
-          source: "./"
-          target: "~/public_html/laravel/"
-          overwrite: true
-
-      # 4. RUN REMOTE COMMANDS (Clear Cache & Verify)
-      - name: 4. Run Post-Deployment Commands
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.SFTP_HOST }}
-          username: ${{ secrets.SFTP_USER }}
-          key: ${{ secrets.SFTP_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
-          script: |
-            echo "--- Starting Post-Deployment Cleanup on Hostinger ---"
-            
-            # 1. Navigate to the Laravel application root
-            cd ~/public_html/laravel/
-            
-            # 2. CLEAR CACHES (Essential)
-            php artisan config:clear
-            php artisan cache:clear
-            php artisan view:clear
-            
-            # 3. Check if new content is actually deployed
-            echo "=== Checking deployed content ==="
-            grep -r "welcome to homepage" ./public/assets/ || echo "Checking for new content..."
-            
-            # 4. Update .htaccess with cache control using echo commands
-            echo "=== Updating .htaccess ==="
-            echo "# Prefer index.html over index.php" > ./public/.htaccess
-            echo "DirectoryIndex index.html index.php" >> ./public/.htaccess
-            echo "" >> ./public/.htaccess
-            echo "<IfModule mod_rewrite.c>" >> ./public/.htaccess
-            echo "    <IfModule mod_negotiation.c>" >> ./public/.htaccess
-            echo "        Options -MultiViews -Indexes" >> ./public/.htaccess
-            echo "    </IfModule>" >> ./public/.htaccess
-            echo "" >> ./public/.htaccess
-            echo "    RewriteEngine On" >> ./public/.htaccess
-            echo "" >> ./public/.htaccess
-            echo "    # If the request is not a file or directory, send to index.php" >> ./public/.htaccess
-            echo "    RewriteCond %{REQUEST_FILENAME} !-d" >> ./public/.htaccess
-            echo "    RewriteCond %{REQUEST_FILENAME} !-f" >> ./public/.htaccess
-            echo "    RewriteRule ^ index.php [L]" >> ./public/.htaccess
-            echo "</IfModule>" >> ./public/.htaccess
-            echo "" >> ./public/.htaccess
-            echo "# DISABLE CACHING FOR DEVELOPMENT" >> ./public/.htaccess
-            echo "<IfModule mod_headers.c>" >> ./public/.htaccess
-            echo "    # Disable caching for HTML" >> ./public/.htaccess
-            echo "    <FilesMatch \"\\.(html|htm)$\">" >> ./public/.htaccess
-            echo "        Header set Cache-Control \"no-cache, no-store, must-revalidate\"" >> ./public/.htaccess
-            echo "        Header set Pragma \"no-cache\"" >> ./public/.htaccess
-            echo "        Header set Expires 0" >> ./public/.htaccess
-            echo "    </FilesMatch>" >> ./public/.htaccess
-            echo "    " >> ./public/.htaccess
-            echo "    # Disable caching for JS and CSS" >> ./public/.htaccess
-            echo "    <FilesMatch \"\\.(js|css)$\">" >> ./public/.htaccess
-            echo "        Header set Cache-Control \"no-cache, no-store, must-revalidate\"" >> ./public/.htaccess
-            echo "        Header set Pragma \"no-cache\" " >> ./public/.htaccess
-            echo "        Header set Expires 0" >> ./public/.htaccess
-            echo "    </FilesMatch>" >> ./public/.htaccess
-            echo "    " >> ./public/.htaccess
-            echo "    # Cache images for 1 hour only" >> ./public/.htaccess
-            echo "    <FilesMatch \"\\.(jpg|jpeg|png|gif|ico|svg)$\">" >> ./public/.htaccess
-            echo "        Header set Cache-Control \"max-age=3600, public\"" >> ./public/.htaccess
-            echo "    </FilesMatch>" >> ./public/.htaccess
-            echo "</IfModule>" >> ./public/.htaccess
-            
-            # 5. Set proper permissions
-            chmod 644 ./public/.htaccess
-            
-            # 6. Also update the main .htaccess in laravel root
-            echo "<IfModule mod_rewrite.c>" > ./.htaccess
-            echo "    RewriteEngine On" >> ./.htaccess
-            echo "    RewriteBase /laravel/" >> ./.htaccess
-            echo "" >> ./.htaccess
-            echo "    # Rediriger tout vers le dossier public" >> ./.htaccess
-            echo "    RewriteCond %{REQUEST_URI} !^/laravel/public" >> ./.htaccess
-            echo "    RewriteRule ^(.*)$ public/$1 [L]" >> ./.htaccess
-            echo "</IfModule>" >> ./.htaccess
-            
-            chmod 644 ./.htaccess
-            
-            # 7. Final verification
-            echo "=== Final verification ==="
-            echo "File list:"
-            ls -la ./public/assets/
-            echo "File sizes and timestamps:"
-            ls -lh ./public/assets/
-            echo "=== Checking if we can find the new content ==="
-            find ./public/assets/ -name "*.js" -exec grep -l "welcome to homepage" {} \; || echo "Searching for content..."
-            echo "--- Deployment Complete! ---"
+      # 4. RUN REMOTE COMMANDS (Clear Cache & Verify)
+      - name: 4. Run Post-Deployment Commands
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USER }}
+          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          script: |
+            echo "--- Starting Post-Deployment Cleanup on Hostinger ---"
+            
+            # 1. Navigate to the Laravel application root
+            cd ~/public_html/laravel/
+            
+            # 2. CLEAR CACHES (Essential)
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan view:clear
+            
+            # 3. Check if new content is actually deployed
+            echo "=== Checking deployed content ==="
+            grep -r "welcome to homepage" ./public/assets/ || echo "Checking for new content..."
+            
+            # 4. Update .htaccess with cache control using echo commands
+            echo "=== Updating .htaccess ==="
+            echo "# Force LSCache OFF for all requests hitting this directory" > ./public/.htaccess # ADDED LSCache BYPASS
+            echo "<IfModule mod_headers.c>" >> ./public/.htaccess
+            echo "    Header always set X-LiteSpeed-Cache-Control \"no-cache\"" >> ./public/.htaccess
+            echo "</IfModule>" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            # Original content starts here
+            echo "# Prefer index.html over index.php" >> ./public/.htaccess
+            echo "DirectoryIndex index.html index.php" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            echo "<IfModule mod_rewrite.c>" >> ./public/.htaccess
+            echo "    <IfModule mod_negotiation.c>" >> ./public/.htaccess
+            echo "        Options -MultiViews -Indexes" >> ./public/.htaccess
+            echo "    </IfModule>" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            echo "    RewriteEngine On" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            echo "    # If the request is not a file or directory, send to index.php" >> ./public/.htaccess
+            echo "    RewriteCond %{REQUEST_FILENAME} !-d" >> ./public/.htaccess
+            echo "    RewriteCond %{REQUEST_FILENAME} !-f" >> ./public/.htaccess
+            echo "    RewriteRule ^ index.php [L]" >> ./public/.htaccess
+            echo "</IfModule>" >> ./public/.htaccess
+            echo "" >> ./public/.htaccess
+            echo "# DISABLE CACHING FOR DEVELOPMENT" >> ./public/.htaccess
+            echo "<IfModule mod_headers.c>" >> ./public/.htaccess
+            echo "    # Disable caching for HTML" >> ./public/.htaccess
+            echo "    <FilesMatch \"\\.(html|htm)$\">" >> ./public/.htaccess
+            echo "        Header set Cache-Control \"no-cache, no-store, must-revalidate\"" >> ./public/.htaccess
+            echo "        Header set Pragma \"no-cache\"" >> ./public/.htaccess
+            echo "        Header set Expires 0" >> ./public/.htaccess
+            echo "    </FilesMatch>" >> ./public/.htaccess
+            echo "    " >> ./public/.htaccess
+            echo "    # Disable caching for JS and CSS" >> ./public/.htaccess
+            echo "    <FilesMatch \"\\.(js|css)$\">" >> ./public/.htaccess
+            echo "        Header set Cache-Control \"no-cache, no-store, must-revalidate\"" >> ./public/.htaccess
+            echo "        Header set Pragma \"no-cache\" " >> ./public/.htaccess
+            echo "        Header set Expires 0" >> ./public/.htaccess
+            echo "    </FilesMatch>" >> ./public/.htaccess
+            echo "    " >> ./public/.htaccess
+            echo "    # Cache images for 1 hour only" >> ./public/.htaccess
+            echo "    <FilesMatch \"\\.(jpg|jpeg|png|gif|ico|svg)$\">" >> ./public/.htaccess
+            echo "        Header set Cache-Control \"max-age=3600, public\"" >> ./public/.htaccess
+            echo "    </FilesMatch>" >> ./public/.htaccess
+            echo "</IfModule>" >> ./public/.htaccess
+            
+            # 5. Set proper permissions
+            chmod 644 ./public/.htaccess
+            
+            # 6. Also update the main .htaccess in laravel root
+            echo "<IfModule mod_rewrite.c>" > ./.htaccess
+            echo "    RewriteEngine On" >> ./.htaccess
+            echo "    RewriteBase /laravel/" >> ./.htaccess
+            echo "" >> ./.htaccess
+            echo "    # Rediriger tout vers le dossier public" >> ./.htaccess
+            echo "    RewriteCond %{REQUEST_URI} !^/laravel/public" >> ./.htaccess
+            echo "    RewriteRule ^(.*)$ public/$1 [L]" >> ./.htaccess
+            echo "</IfModule>" >> ./.htaccess
+            
+            chmod 644 ./.htaccess
+            
+            # 7. Final verification
+            echo "=== Final verification ==="
+            echo "File list:"
+            ls -la ./public/assets/
+            echo "File sizes and timestamps:"
+            ls -lh ./public/assets/
+            echo "=== Checking if we can find the new content ==="
+            find ./public/assets/ -name "*.js" -exec grep -l "welcome to homepage" {} \; || echo "Searching for content..."
+            echo "--- Deployment Complete! ---"
