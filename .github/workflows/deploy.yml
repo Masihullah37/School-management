@@ -59,37 +59,42 @@ jobs:
           BUILD_HASH=$(git rev-parse --short HEAD)
           TIMESTAMP=$(date +%s)
           RANDOM_SUFFIX=$(openssl rand -hex 4)
-          
+    
           echo "=== Starting aggressive cache busting ==="
           echo "Hash: $BUILD_HASH, Timestamp: $TIMESTAMP, Random: $RANDOM_SUFFIX"
-          
-          # Navigate to the dist directory
-          cd frontend/dist
-          
-          # Add hash, timestamp AND random suffix to all JS and CSS files
-          for file in assets/*.js assets/*.css; do
-            if [ -f "$file" ]; then
-              filename=$(basename "$file")
-              extension="${filename##*.}"
-              nameonly="${filename%.*}"
-              
-              # Create new filename with hash, timestamp AND random
-              new_filename="${nameonly}-${BUILD_HASH}-${TIMESTAMP}-${RANDOM_SUFFIX}.${extension}"
-              echo "Renaming: $filename -> $new_filename"
-              mv "$file" "assets/${new_filename}"
-              
-              # Update all references in index.html
-              sed -i "s/$filename/$new_filename/g" index.html
-            fi
-          done
-          
-          # Also add query parameter cache busting as backup
-          sed -i "s/\.js\"/.js?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
-          sed -i "s/\.css\"/.css?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
-          
-          echo "=== Cache busting completed ==="
-          echo "=== Final index.html content ==="
-          grep -E "(\.js|\.css)" index.html
+    
+        # Navigate to the dist directory
+cd frontend/dis
+
+# List files before renaming
+    echo "=== Files before renaming ==="
+    ls -la assets/
+    
+    # Add hash, timestamp AND random suffix to all JS and CSS files
+    for file in assets/*.js assets/*.css; do
+      if [ -f "$file" ]; then
+        filename=$(basename "$file")
+        extension="${filename##*.}"
+        nameonly="${filename%.*}"
+        
+        # Create new filename with hash, timestamp AND random
+        new_filename="${nameonly}-${BUILD_HASH}-${TIMESTAMP}-${RANDOM_SUFFIX}.${extension}"
+        echo "Renaming: $filename -> $new_filename"
+        mv "$file" "assets/${new_filename}"
+        
+        # Update all references in index.html
+        sed -i "s/$filename/$new_filename/g" index.html
+      fi
+    done
+    
+    # Also add query parameter cache busting as backup
+    sed -i "s/\.js\"/.js?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
+    sed -i "s/\.css\"/.css?version=${TIMESTAMP}${RANDOM_SUFFIX}\"/g" index.html
+    
+    echo "=== Files after renaming ==="
+    ls -la assets/
+    echo "=== Final index.html content ==="
+    grep -E "(\.js|\.css)" index.html
 
       - name: 10. Copy Frontend Assets to Public
         run: |
