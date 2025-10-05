@@ -142,7 +142,7 @@ jobs:
             
             # 3. Test if mod_headers is working
             echo "=== Testing mod_headers ==="
-            curl -I https://laravel.test.icvinformatique.com/ | grep -i "cache-control" || echo "mod_headers might not be working"
+            curl -I https://laravel.test.icvinformatique.com/laravel/public/ | grep -i "cache-control" || echo "mod_headers might not be working"
             
             echo "=== Final verification timestamp ==="
             ls -la ./public/assets
