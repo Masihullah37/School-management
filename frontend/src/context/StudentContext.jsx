@@ -24,32 +24,40 @@ export default function StudentContext({ children }) {
     return await UserApi.login(email, password);
   };
 
-  // const logout = () => {
-
-  //   setUser({});
-  //   setAuthenticated(false);
-  // };
-
-  // StudentContext.jsx
 
 const logout = async () => {
-    try {
-        // 1. Invalidate the token on the backend
-        await UserApi.logout(); 
-    } catch (error) {
-        // Log the error but continue with client-side cleanup
-        console.error("Backend logout failed:", error); 
-    }
-    
-    // 2. Clear the user object
-    setUser({});
-
-    // 3. Update the authenticated status
-    setAuthenticated(false);
-    
-    // 4.CRITICAL FIX: Remove the token from Local Storage
-    window.localStorage.removeItem("token"); 
+  console.log('🔄 Logout function started');
+  
+  // Debug current storage state
+  console.log('Before removal - Token:', window.localStorage.getItem('token'));
+  console.log('Before removal - Auth:', window.localStorage.getItem('AUTHENTICATED'));
+  
+  try {
+    await UserApi.logout();
+    console.log('✅ Backend logout successful');
+  } catch (error) {
+    console.error('❌ Backend logout failed:', error);
+  }
+  
+  // Clear storage with force
+  window.localStorage.removeItem('token');
+  window.localStorage.removeItem('AUTHENTICATED');
+  
+  // Force storage sync
+  window.localStorage.clear();
+  
+  // Debug after removal
+  console.log('After removal - Token:', window.localStorage.getItem('token'));
+  console.log('After removal - Auth:', window.localStorage.getItem('AUTHENTICATED'));
+  
+  setUser({});
+  setAuthenticated(false);
+  
+  // Add cache busting to reload
+  const timestamp = new Date().getTime();
+  window.location.href = window.location.origin + '?nocache=' + timestamp;
 };
+
 
   const setAuthenticated = (isAuthenticated) => {
     _setAuthenticated(isAuthenticated);
